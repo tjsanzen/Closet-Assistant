@@ -1,8 +1,8 @@
-# Closet Assistant 👕
+# Closet Assistant
 
 *Your Home Assistant, now also your closet assistant.*
 
-Closet Assistant is a custom Home Assistant integration (installed with HACS) that picks an outfit for the day from your real closet. It does **not** use generative AI. It uses rule-based scoring and weighted randomness built on the day's weather, warmth layering, and outfit design rules: proportion, the 60-30-10 colour split, and pattern mixing. It also tracks how many times each piece has been worn and resets everything on laundry day.
+Closet Assistant is a custom Home Assistant integration (installed with HACS) that picks an outfit for the day from your actual closet. It does **not** use generative AI to do this. It uses rule-based scoring and weighted randomness built on the day's weather, warmth layering, and outfit design rules: proportion, the 60-30-10 colour split, and pattern mixing. It also tracks how many times each piece has been worn and resets everything on laundry day.
 
 It ships with two dashboard cards:
 
@@ -11,27 +11,24 @@ It ships with two dashboard cards:
 | **Wear Today**: high/low, rain chance, UV and wind, today's outfit as a board of cards (top and bottom large, then layers, shoes and accessories), **shed later** badges on removable layers, **Randomize**, **Wear this**, **Why?** notes, and a **Closet** button that opens the Manage Closet card in a popup | `custom:closet-assistant-today-card` |
 | **Manage Closet**: add, edit, remove items, upload images, cleanliness, **Wash closet**, import/export JSON, scan the image folder | `custom:closet-assistant-closet-card` |
 
-The cards are bundled inside the integration and load on every dashboard automatically. You don't need to add a separate Lovelace resource.
+The cards are bundled inside the integration and load on every dashboard automatically, so that you don't need to add a separate Lovelace resource.
 
 ---
 
 ## Install
 
 ### HACS (custom repository)
-1. Push this folder to a GitHub repo. Then update `documentation`, `issue_tracker` and `codeowners` in `custom_components/closet_assistant/manifest.json`.
-2. In HACS, open **⋮ → Custom repositories**, add the repo URL, and pick the category **Integration**.
-3. Install **Closet Assistant** and restart Home Assistant.
-4. Go to **Settings → Devices & services → Add integration → Closet Assistant**.
+1. In HACS, open **⋮ → Custom repositories**, add the repo URL, and pick the category **Integration**.
+2. Install **Closet Assistant** and restart Home Assistant.
+3. Go to **Settings → Devices & services → Add integration → Closet Assistant**.
 
-### Manual
-Copy `custom_components/closet_assistant` into `<config>/custom_components/` and restart.
 
 ### Setup wizard
 | Setting | What it does |
 |---|---|
 | Weather entity | Any `weather.*` entity. The integration reads today's daily forecast through `weather.get_forecasts`: high, low, precipitation and chance, UV, wind. If the provider has no daily low, it falls back to the hourly forecast. |
 | How dirty do your clothes get? | **1** = dirtiest (wear once between washes), **2** = average, **3** = cleanest (wear 3 times). |
-| Laundry day(s), every N weeks, reset time | At that time on laundry days, every item goes back to clean. For example, Sunday every 2 weeks at 18:00. |
+| Laundry day(s), every N weeks, reset time | At that time on laundry days, every item goes back to clean. You can also manually reset clothes when washed. |
 | New outfit each morning at | When the day's suggestion is generated. The default is 05:00. |
 | Temperature sensitivity | −5 (run hot) to +5 (run cold). Each step shifts the targets by about 2 °F. |
 | Layering threshold | If high minus low is at least this many degrees, the outfit is built in layers. |
@@ -73,7 +70,7 @@ See `examples/closet.json` for a full starter closet. The item fields:
 |---|---|---|
 | `name` | text | |
 | `category` | `Underwear`, `Socks`, `Short Sleeved Shirt`, `Long Sleeved Shirt`, `Sweater`, `Jacket`, `Coat`, `Shorts`, `Pants`, `Skirt`, `Belt`, `Shoes`, `Hat`, `Accessory` | Labels, keys (`short_sleeve_shirt`) and common words (`jeans`, `hoodie`, `tee`, `blazer`, `sneakers`) all work. |
-| `warmth` | 1-10 | `warmpth` is accepted too 😉 |
+| `warmth` | 1-10 |  |
 | `waterproof` | 1-10 | |
 | `form_fit` | 1-10 | 1 = loose/oversized, 10 = tight/fitted. `form_fitting` is accepted too. |
 | `uv` | 1-10 | |
@@ -94,7 +91,7 @@ See `examples/closet.json` for a full starter closet. The item fields:
 - Upload an image in the item editor. It's resized in the browser to 640 px and saved as WebP with its transparency kept. The item's main colour is **detected automatically** from the opaque pixels.
 - Or drop images into `config/closet_assistant/images/` and use **⋮ → Scan image folder** (or the `closet_assistant.scan_images` action). This creates a draft item for every unused image, guessing the category from the file name (`jeans_dark-wash.png` becomes Pants). Drafts are marked **review**, so tap them to fill in the ratings.
 - Square or portrait images with a transparent background look best on the cards.
-- **How images are shown.** Photos with a transparent background float on a softly tinted card. Photos with a solid background (an ordinary snapshot) fill the card edge to edge instead. Each image is checked automatically. Items without a photo show a swatch in their colour and pattern.
+- **How images are shown.** Photos with a transparent background float on a softly tinted card. Photos with a solid background (an ordinary snapshot) fill the card edge to edge instead. Items without a photo show a swatch in their color and pattern.
 
 > Images are served from `/closet_assistant/images/` with random file names. Like `/local/`, that path does not require a login, so don't upload anything private.
 
@@ -148,17 +145,14 @@ actions:
 ## Actions
 `closet_assistant.randomize`, `wear_outfit` (optional `item_ids`), `wash_closet` (optional `item_ids`), `import_closet` (`path` or `data`, `replace`), `export_closet` (optional `path`, also returns JSON), `scan_images`.
 
-## Troubleshooting
-**A card spins forever.** Open the browser console (F12) and look for `CLOSET ASSISTANT v0.x`.
-- If you see *"Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of 'text/plain'"*, you're still on 0.1.0. Since 0.1.1 the card is served by a view that always sends `text/javascript`.
-- Don't add a Lovelace resource for the card, and especially not a `raw.githubusercontent.com` link, which GitHub always sends as plain text. The integration loads the card itself. If you added one manually, delete it under **Settings → Dashboards → ⋮ → Resources**.
-- After updating, restart Home Assistant and hard-refresh the browser (or clear the app's frontend cache on mobile).
-
-## Icon
-Put a square `icon.png` (256×256, plus an optional 512×512 `icon@2x.png`) in `custom_components/closet_assistant/brand/`. You can also add `logo.png`, `dark_icon.png` and `dark_logo.png`. Home Assistant 2026.3 and later show it on the integration page with no extra setup.
-
 ## Data
 Everything is stored in `config/.storage/closet_assistant.closet`, and images are in `config/closet_assistant/images/`. Both are included in normal HA backups.
 
-## Ideas for later
-Dresses and other one-piece outfits, occasion or formality tags, per-person closets, "wear tomorrow" after a set evening time, and wear-count statistics.
+# Upcoming Features
+
+I am working on this as I have time, but if you have additional ideas, please let me know and I'll do my best to add them, or create a fork! 
+
+# Features in progress:
+- Favorite Outfits
+- "Wear Tomorrow"
+- Improving outfit picking system
