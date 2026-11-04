@@ -1,4 +1,4 @@
-![logo](https://github.com/tjsanzen/Closet-Assistant/blob/main/img/icon.png)
+<img src="https://github.com/tjsanzen/Closet-Assistant/blob/main/img/icon.png" width="300" alt="Logo">   
 # Closet Assistant
 
 *Your Home Assistant, now also your closet assistant.*
