@@ -4,7 +4,7 @@
  *   custom:closet-assistant-closet-card  - "Manage Closet"
  * Served and auto-loaded by the closet_assistant integration. No build step.
  */
-const CA_VERSION = "0.3.0";
+const CA_VERSION = "0.3.1";
 const DOMAIN = "closet_assistant";
 
 /* ------------------------------------------------------------------ shared store */
@@ -461,6 +461,42 @@ const TODAY_CSS = `
     box-shadow:0 10px 40px rgba(0,0,0,.35); background:var(--card-background-color); }
   .closet-dialog closet-assistant-closet-card { display:block; }
   .close-x { position:absolute; top:12px; right:12px; z-index:2; padding:6px; }
+
+  /* ---- Responsive scaling: the card sizes itself to its own width, not the screen ---- */
+  #main { container-type:inline-size; }
+  .tile .name { font-size:14px; }
+  .tile:not(.lg) .name { font-size:13px; }
+  .tile .slot { font-size:11px; }
+  .chip, .why, .banner { font-size:13px; }
+  .actions button { font-size:14px; min-height:34px; }
+  .board { width:100%; max-width:1100px; margin:0 auto; }
+  .wx, .banner, .actions, .why { max-width:1100px; margin-left:auto; margin-right:auto; }
+
+  /* Narrow (phone column): smaller hero art so the card isn't a skyscraper */
+  @container (max-width: 380px) {
+    .tile.lg .img { aspect-ratio:1 / 1; }
+    .smalls { grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); gap:8px; }
+    .temps .hi { font-size:1.7em; }
+  }
+  /* Medium: hero on the left, everything else on the right */
+  @container (min-width: 600px) {
+    .board { display:grid; grid-template-columns:minmax(0, 1.15fr) minmax(0, 1fr); align-items:start; gap:14px; }
+    .hero { gap:12px; }
+    .smalls { grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:12px; }
+    .basics { grid-column:1 / -1; }
+    .tile.lg .img { aspect-ratio:1 / 1; }
+    .wx-icon { --mdc-icon-size:52px; }
+    .temps .hi { font-size:2.3em; }
+  }
+  /* Wide (full-width dashboards): cap sizes and add breathing room */
+  @container (min-width: 900px) {
+    .board { grid-template-columns:minmax(0, 520px) minmax(0, 1fr); }
+    .smalls { grid-template-columns:repeat(auto-fill, minmax(128px, 1fr)); }
+    .tile .name { font-size:15px; }
+    .tile:not(.lg) .name { font-size:14px; }
+    .tile .slot { font-size:12px; }
+    .chip, .why, .banner { font-size:14px; }
+  }
 `;
 
 /* ================================================================== MANAGE CLOSET */
@@ -956,6 +992,23 @@ const CLOSET_CSS = `
   .rating .ends { display:flex; justify-content:space-between; font-size:.7em; }
   .clean-row { font-size:.82em; display:flex; gap:8px; align-items:center; }
   .dlg-actions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; align-items:center; }
+
+  /* ---- Responsive scaling ---- */
+  #main { container-type:inline-size; }
+  .item .name { font-size:13px; }
+  .item .sub, .flag { font-size:11px; }
+  .stats, .chip, .toggle { font-size:13px; }
+  @container (max-width: 380px) {
+    .grid { grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:8px; }
+  }
+  @container (min-width: 700px) {
+    .grid { grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); gap:12px; }
+    .item .name { font-size:14px; }
+    .item .sub { font-size:12px; }
+  }
+  @container (min-width: 1100px) {
+    .grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+  }
 `;
 
 /*
