@@ -8,7 +8,7 @@ It ships with two dashboard cards:
 
 | Card | Type |
 |---|---|
-| **Wear Today**: high/low, rain chance, UV and wind, today's outfit **layered on a figure** the way it's worn, a **Morning / Afternoon** toggle that sheds the removable layers, **Randomize**, **Wear this**, and "Why this?" notes | `custom:closet-assistant-today-card` |
+| **Wear Today**: high/low, rain chance, UV and wind, today's outfit as a board of cards (top and bottom large, then layers, shoes and accessories), **shed later** badges on removable layers, **Randomize**, **Wear this**, **Why?** notes, and a **Closet** button that opens the Manage Closet card in a popup | `custom:closet-assistant-today-card` |
 | **Manage Closet**: add, edit, remove items, upload images, cleanliness, **Wash closet**, import/export JSON, scan the image folder | `custom:closet-assistant-closet-card` |
 
 The cards are bundled inside the integration and load on every dashboard automatically. You don't need to add a separate Lovelace resource.
@@ -42,6 +42,7 @@ You can change all of these later under **Configure**.
 ```yaml
 type: custom:closet-assistant-today-card
 title: Wear Today        # optional
+closet_button: true      # optional, set false to hide the Closet button
 ```
 ```yaml
 type: custom:closet-assistant-closet-card
@@ -93,7 +94,7 @@ See `examples/closet.json` for a full starter closet. The item fields:
 - Upload an image in the item editor. It's resized in the browser to 640 px and saved as WebP with its transparency kept. The item's main colour is **detected automatically** from the opaque pixels.
 - Or drop images into `config/closet_assistant/images/` and use **⋮ → Scan image folder** (or the `closet_assistant.scan_images` action). This creates a draft item for every unused image, guessing the category from the file name (`jeans_dark-wash.png` becomes Pants). Drafts are marked **review**, so tap them to fill in the ratings.
 - Square or portrait images with a transparent background look best on the cards.
-- **How images are layered on the Wear Today figure.** Each piece is fitted into its own box on a portrait figure and stacked in the order it's worn: pants, belt, shirt, sweater, jacket, scarf, hat, with shoes at the feet. Shirts, sweaters, jackets and pants hang from the top of their box (shoulders, waistband). Hats and shoes sit on the bottom of theirs. For the best fit, crop each photo tight to the garment, shot front-on and flat. Pieces without a photo are drawn as a silhouette in the item's colour and pattern.
+- **How images are shown.** Photos with a transparent background float on a softly tinted card. Photos with a solid background (an ordinary snapshot) fill the card edge to edge instead. Each image is checked automatically. Items without a photo show a swatch in their colour and pattern.
 
 > Images are served from `/closet_assistant/images/` with random file names. Like `/local/`, that path does not require a login, so don't upload anything private.
 

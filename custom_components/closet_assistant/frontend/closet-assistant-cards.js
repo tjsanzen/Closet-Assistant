@@ -4,7 +4,7 @@
  *   custom:closet-assistant-closet-card  - "Manage Closet"
  * Served and auto-loaded by the closet_assistant integration. No build step.
  */
-const CA_VERSION = "0.2.0";
+const CA_VERSION = "0.3.0";
 const DOMAIN = "closet_assistant";
 
 /* ------------------------------------------------------------------ shared store */
@@ -82,11 +82,63 @@ function fmtTemp(v) {
 
 function itemVisual(item, categories) {
   const icon = (categories && categories[item.category] && categories[item.category].icon) || "mdi:hanger";
+  if (item.image_url) {
+    const fit = caImageFit.get(item.image_url) || "";
+    return `<div class="img ${fit}" style="--c:${esc(item.color)}">
+        <img src="${esc(item.image_url)}" alt="${esc(item.name)}" loading="lazy" data-fit>
+      </div>`;
+  }
   return `<div class="img" style="--c:${esc(item.color)}">
-      ${item.image_url
-        ? `<img src="${esc(item.image_url)}" alt="${esc(item.name)}" loading="lazy">`
-        : `<ha-icon icon="${esc(icon)}" style="color:${esc(item.color)}"></ha-icon>`}
+      <div class="swatch" style="background:${patternFill(item)}"><ha-icon icon="${esc(icon)}" style="color:${isLight(item.color) ? "rgba(0,0,0,.55)" : "rgba(255,255,255,.9)"}"></ha-icon></div>
     </div>`;
+}
+
+/* Photos with a transparent background float on a tinted tile; photos with a
+   solid background fill the tile edge to edge. Detected once per image. */
+const caImageFit = new Map();
+function detectFit(img) {
+  try {
+    const n = 24;
+    const c = document.createElement("canvas");
+    c.width = c.height = n;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, n, n);
+    const d = ctx.getImageData(0, 0, n, n).data;
+    let edge = 0, clear = 0;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (x > 0 && y > 0 && x < n - 1 && y < n - 1) continue;
+      edge++;
+      if (d[(y * n + x) * 4 + 3] < 240) clear++;
+    }
+    return clear / edge > 0.25 ? "transparent" : "opaque";
+  } catch (err) {
+    return "transparent";
+  }
+}
+function caFitImages(root) {
+  root.querySelectorAll("img[data-fit]").forEach((img) => {
+    const apply = () => {
+      const key = img.getAttribute("src");
+      let fit = caImageFit.get(key);
+      if (!fit) {
+        fit = detectFit(img);
+        caImageFit.set(key, fit);
+      }
+      const box = img.closest(".img");
+      if (box) {
+        box.classList.remove("opaque", "transparent");
+        box.classList.add(fit);
+      }
+    };
+    if (img.complete && img.naturalWidth) apply();
+    else img.addEventListener("load", apply, { once: true });
+  });
+}
+
+function isLight(hex) {
+  const h = String(hex || "#888888").replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) || 0);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 170;
 }
 
 function pips(item) {
@@ -166,8 +218,12 @@ const SHARED_CSS = `
   .muted { color:var(--secondary-text-color); }
   .img { position:relative; aspect-ratio:1/1; border-radius:12px; display:flex; align-items:center; justify-content:center;
     background:color-mix(in srgb, var(--c, #888) 14%, var(--secondary-background-color)); overflow:hidden; }
-  .img img { width:88%; height:88%; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,.18)); }
-  .img ha-icon { --mdc-icon-size:44%; opacity:.85; }
+  .img img { width:84%; height:84%; object-fit:contain; filter:drop-shadow(0 3px 6px rgba(0,0,0,.18)); }
+  .img.opaque { background:var(--secondary-background-color); }
+  .img.opaque img { width:100%; height:100%; object-fit:cover; filter:none; }
+  .img .swatch { width:58%; height:58%; border-radius:22%; display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.08), 0 3px 8px rgba(0,0,0,.15); }
+  .img .swatch ha-icon { --mdc-icon-size:46%; }
   .pips { display:inline-flex; gap:3px; }
   .pips i { width:7px; height:7px; border-radius:50%; background:var(--divider-color); }
   .pips i.on { background:var(--success-color, #43a047); }
@@ -175,13 +231,23 @@ const SHARED_CSS = `
 `;
 
 /* ================================================================== WEAR TODAY */
+const BOARD_HERO = ["top", "bottom"];
+const BOARD_SMALL = ["outer", "mid", "shoes", "belt", "hat", "accessory"];
+
 class ClosetAssistantTodayCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
     this._busy = false;
     this._showWhy = false;
+    this.shadowRoot.innerHTML = `<style>${SHARED_CSS}${TODAY_CSS}</style>
+      <ha-card id="main"></ha-card><div id="closetModal"></div>`;
+    this.$main = this.shadowRoot.getElementById("main");
+    this.$closet = this.shadowRoot.getElementById("closetModal");
     this.shadowRoot.addEventListener("click", (e) => this._onClick(e));
+    this._onKey = (e) => {
+      if (e.key === "Escape" && this._closetEl && !(typeof this._closetEl.hasOpenDialog === "function" && this._closetEl.hasOpenDialog())) this._closeCloset();
+    };
   }
   setConfig(config) {
     this._config = config || {};
@@ -190,6 +256,7 @@ class ClosetAssistantTodayCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     caStore.connect(hass);
+    if (this._closetEl) this._closetEl.hass = hass;
   }
   connectedCallback() {
     this._off = caStore.on(() => this._render());
@@ -197,6 +264,7 @@ class ClosetAssistantTodayCard extends HTMLElement {
   }
   disconnectedCallback() {
     if (this._off) this._off();
+    this._closeCloset();
   }
   getCardSize() {
     return 8;
@@ -205,27 +273,43 @@ class ClosetAssistantTodayCard extends HTMLElement {
     return {};
   }
 
+  /* ---------------------------------------------------------- closet modal */
+  _openCloset() {
+    if (this._closetEl) return;
+    const card = document.createElement("closet-assistant-closet-card");
+    card.setConfig({ title: "Closet", in_dialog: true });
+    card.hass = this._hass;
+    this._closetEl = card;
+    this.$closet.innerHTML = `<div class="overlay closet-overlay" data-action="close-closet">
+        <div class="closet-dialog" data-stop>
+          <button class="small close-x" data-action="close-closet" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+        </div>
+      </div>`;
+    this.$closet.querySelector(".closet-dialog").appendChild(card);
+    window.addEventListener("keydown", this._onKey);
+  }
+  _closeCloset() {
+    if (!this._closetEl) return;
+    this._closetEl = null;
+    this.$closet.innerHTML = "";
+    window.removeEventListener("keydown", this._onKey);
+  }
+
   async _onClick(e) {
     const btn = e.target.closest("[data-action]");
-    if (!btn || this._busy) return;
+    if (!btn) return;
     const action = btn.dataset.action;
+    if (action === "close-closet") {
+      // ignore clicks that land inside the dialog but bubble to the overlay
+      if (btn.classList.contains("overlay") && e.composedPath().some((n) => n.dataset && n.dataset.stop !== undefined)) return;
+      return this._closeCloset();
+    }
+    if (action === "open-closet") return this._openCloset();
     if (action === "why") {
       this._showWhy = !this._showWhy;
       return this._render();
     }
-    if (action === "view") {
-      // Morning <-> afternoon: toggle classes in place so the shed layers animate away
-      this._view = btn.dataset.view;
-      const fig = this.shadowRoot.querySelector(".figure");
-      if (fig) fig.classList.toggle("afternoon", this._view === "afternoon");
-      this.shadowRoot.querySelectorAll('[data-action="view"]').forEach((b) =>
-        b.classList.toggle("sel", b.dataset.view === this._view)
-      );
-      this.shadowRoot.querySelectorAll(".piece.removable").forEach((p) =>
-        p.classList.toggle("off", this._view === "afternoon")
-      );
-      return;
-    }
+    if (this._busy) return;
     this._busy = true;
     this._render();
     try {
@@ -238,30 +322,19 @@ class ClosetAssistantTodayCard extends HTMLElement {
     this._render();
   }
 
-  /* One clothing layer placed on the figure. Real images when available,
-     otherwise a coloured silhouette in the item's colour and pattern. */
-  _layer(item) {
-    const zone = { ...FIGURE_ZONES[item.slot] };
-    if (item.slot === "bottom" && BOTTOM_HEIGHT[item.category]) zone.h = BOTTOM_HEIGHT[item.category];
-    const left = (100 - zone.w) / 2;
-    const style = `top:${zone.top}%;height:${zone.h}%;width:${zone.w}%;left:${left}%;z-index:${zone.z}`;
-    let inner;
-    if (item.image_url) {
-      inner = `<img src="${esc(item.image_url)}" alt="${esc(item.name)}" style="object-position:center ${zone.pos}">`;
-    } else {
-      const shape = SILHOUETTES[item.category] || "solid";
-      const fill = `background:${patternFill(item)}`;
-      inner = shape === "open"
-        ? `<div class="sil" style="${fill};clip-path:${SHAPES.jacketL}"></div><div class="sil" style="${fill};clip-path:${SHAPES.jacketR}"></div>`
-        : `<div class="sil" style="${fill};clip-path:${SHAPES[shape] || "none"};${shape === "solid" ? "border-radius:12px" : ""}"></div>`;
-    }
-    return `<div class="layer s-${item.slot} ${item.removable ? "removable" : ""}" style="${style}" title="${esc(item.name)}">${inner}</div>`;
+  _tile(item, cats, large) {
+    return `<div class="tile ${large ? "lg" : ""} ${item.removable ? "removable" : ""}" style="--c:${esc(item.color)}" title="${esc(item.name)}">
+      ${itemVisual(item, cats)}
+      ${item.removable ? `<span class="badge"><ha-icon icon="mdi:arrow-collapse-down"></ha-icon>shed later</span>` : ""}
+      <div class="label"><span class="name">${esc(item.name)}</span><span class="slot">${esc(SLOT_LABELS[item.slot] || "")}</span></div>
+    </div>`;
   }
 
   _render() {
-    if (!this.shadowRoot) return;
+    if (!this.$main) return;
     const d = caStore.data;
-    const title = this._config && this._config.title;
+    const cfg = this._config || {};
+    const showClosetBtn = cfg.closet_button !== false;
     let body;
     if (caStore.error) {
       body = `<div class="err">${esc(caStore.error)}</div>`;
@@ -271,14 +344,13 @@ class ClosetAssistantTodayCard extends HTMLElement {
       const w = d.weather || {};
       const t = d.today || { items: [], notes: [] };
       const items = t.items || [];
-      const key = `${t.date}|${items.map((i) => i.id).join(",")}`;
-      if (key !== this._outfitKey) {
-        this._outfitKey = key;
-        this._view = "morning"; // a new outfit always starts fully layered
-      }
+      const cats = d.categories;
+      const by = {};
+      for (const it of items) by[it.slot] = it;
+      const hero = BOARD_HERO.filter((s) => by[s]);
+      const small = BOARD_SMALL.filter((s) => by[s]);
+      const basics = ["underwear", "socks"].filter((s) => by[s]);
       const removable = items.filter((i) => i.removable);
-      const onFigure = items.filter((i) => FIGURE_ZONES[i.slot]);
-      const afternoon = removable.length && this._view === "afternoon";
       const meta = [];
       if (w.precip_prob !== null && w.precip_prob !== undefined) meta.push(`<span><ha-icon icon="mdi:water-percent"></ha-icon>${Math.round(w.precip_prob)}%</span>`);
       if (w.uv !== null && w.uv !== undefined) meta.push(`<span><ha-icon icon="mdi:sun-wireless-outline"></ha-icon>UV ${esc(w.uv)}</span>`);
@@ -293,25 +365,24 @@ class ClosetAssistantTodayCard extends HTMLElement {
           </div>
           <div class="wx-meta muted">${meta.join("")}</div>
         </div>
+        ${removable.length
+          ? `<div class="banner"><ha-icon icon="mdi:layers-triple-outline"></ha-icon>
+             <span>Big swing today. Start layered, then shed the ${removable.map((i) => `<b>${esc(i.name)}</b>`).join(" and ")} as it warms up.</span></div>`
+          : ""}
         ${items.length
-          ? `${removable.length
-              ? `<div class="views">
-                  <button class="small ${afternoon ? "" : "sel"}" data-action="view" data-view="morning"><ha-icon icon="mdi:weather-sunset-up"></ha-icon>Morning ${fmtTemp(w.low)}</button>
-                  <button class="small ${afternoon ? "sel" : ""}" data-action="view" data-view="afternoon"><ha-icon icon="mdi:white-balance-sunny"></ha-icon>Afternoon ${fmtTemp(w.high)}</button>
-                </div>`
-              : ""}
-            <div class="figure ${afternoon ? "afternoon" : ""}">${onFigure.map((i) => this._layer(i)).join("")}</div>
-            <div class="pieces">
-              ${items.map((i) => `<span class="piece ${i.removable ? "removable" : ""} ${afternoon && i.removable ? "off" : ""}" title="${esc(SLOT_LABELS[i.slot] || "")}">
-                <span class="dot" style="background:${esc(i.color)}"></span>${esc(i.name)}${i.removable ? `<em>shed later</em>` : ""}</span>`).join("")}
+          ? `<div class="board">
+              ${hero.length ? `<div class="hero">${hero.map((s) => this._tile(by[s], cats, true)).join("")}</div>` : ""}
+              ${small.length ? `<div class="smalls">${small.map((s) => this._tile(by[s], cats, false)).join("")}</div>` : ""}
+              ${basics.length ? `<div class="basics muted">${basics.map((s) => `<span class="chip"><span class="dot" style="background:${esc(by[s].color)}"></span>${esc(by[s].name)}</span>`).join("")}</div>` : ""}
             </div>`
-          : `<div class="empty muted">${esc((t.notes || [])[0] || "No outfit yet. Add clothes in the Manage Closet card.")}</div>`}
+          : `<div class="empty muted">${esc((t.notes || [])[0] || "No outfit yet. Add clothes to your closet.")}</div>`}
         ${this._showWhy && t.notes && t.notes.length ? `<ul class="why">${t.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
         ${this._toast ? `<div class="err small-err">${esc(this._toast)}</div>` : ""}
         <div class="actions">
           <button class="small" data-action="randomize" ${this._busy ? "disabled" : ""} title="Pick a different outfit">
             <ha-icon icon="mdi:dice-multiple"></ha-icon>Randomize</button>
-          ${t.notes && t.notes.length ? `<button class="small" data-action="why"><ha-icon icon="mdi:information-outline"></ha-icon>${this._showWhy ? "Hide" : "Why this?"}</button>` : ""}
+          ${t.notes && t.notes.length ? `<button class="small" data-action="why" title="Why this outfit?"><ha-icon icon="mdi:information-outline"></ha-icon>${this._showWhy ? "Hide" : "Why?"}</button>` : ""}
+          ${showClosetBtn ? `<button class="small" data-action="open-closet" title="Manage your closet"><ha-icon icon="mdi:wardrobe-outline"></ha-icon>Closet</button>` : ""}
           <span style="flex:1"></span>
           ${items.length
             ? t.worn
@@ -321,73 +392,34 @@ class ClosetAssistantTodayCard extends HTMLElement {
         </div>`;
     }
     this._toast = null;
-    this.shadowRoot.innerHTML = `<style>${SHARED_CSS}${TODAY_CSS}</style>
-      <ha-card>${title ? `<div class="title">${esc(title)}</div>` : ""}${body}</ha-card>`;
+    this.$main.innerHTML = `${cfg.title ? `<div class="title">${esc(cfg.title)}</div>` : ""}${body}`;
+    caFitImages(this.$main);
   }
 }
-
-/* ------------------------------------------------------------------ outfit figure
- * Every slot has a box on a 5:9 portrait canvas (percentages of width/height).
- * Stacking follows how clothes are actually worn: pants, then belt, then shirt
- * (its hem overlaps the waistband), sweater, jacket, scarf, hat.
- * Images are fitted inside their box with object-fit: contain; tops and bottoms
- * hang from the top edge (shoulders / waistband), shoes and hats sit on the bottom edge.
- */
-const FIGURE_ZONES = {
-  hat:       { top: 0,    h: 12, w: 36, z: 8, pos: "bottom" },
-  accessory: { top: 9,    h: 18, w: 42, z: 7, pos: "top" },
-  outer:     { top: 10,   h: 39, w: 90, z: 6, pos: "top" },
-  mid:       { top: 11,   h: 36, w: 84, z: 5, pos: "top" },
-  top:       { top: 11.5, h: 35, w: 80, z: 4, pos: "top" },
-  belt:      { top: 44,   h: 5,  w: 48, z: 3, pos: "center" },
-  bottom:    { top: 45,   h: 43, w: 62, z: 2, pos: "top" },
-  shoes:     { top: 87,   h: 13, w: 56, z: 1, pos: "bottom" },
-};
-const BOTTOM_HEIGHT = { shorts: 22, skirt: 30 };
-
-const SHAPES = {
-  tee: "polygon(32% 0,68% 0,100% 17%,90% 37%,80% 31%,80% 100%,20% 100%,20% 31%,10% 37%,0 17%)",
-  longsleeve: "polygon(32% 0,68% 0,100% 18%,100% 96%,87% 96%,82% 34%,80% 100%,20% 100%,18% 34%,13% 96%,0 96%,0 18%)",
-  jacketL: "polygon(28% 0,47% 0,48% 100%,19% 100%,17% 34%,13% 98%,0 98%,0 19%)",
-  jacketR: "polygon(53% 0,72% 0,100% 19%,100% 98%,87% 98%,83% 34%,81% 100%,52% 100%)",
-  pants: "polygon(7% 0,93% 0,100% 100%,56% 100%,50% 16%,44% 100%,0 100%)",
-  shorts: "polygon(5% 0,95% 0,100% 100%,55% 100%,50% 38%,45% 100%,0 100%)",
-  skirt: "polygon(18% 0,82% 0,100% 100%,0 100%)",
-  shoes: "polygon(4% 45%,38% 30%,46% 55%,46% 100%,0 100%,0 70%,54% 55%,62% 30%,96% 45%,100% 70%,100% 100%,54% 100%)",
-  hat: "polygon(22% 20%,78% 20%,84% 80%,100% 88%,100% 100%,0 100%,0 88%,16% 80%)",
-  scarf: "polygon(15% 0,85% 0,85% 30%,62% 40%,66% 100%,48% 100%,44% 42%,15% 30%)",
-  belt: "polygon(0 15%,100% 15%,100% 85%,0 85%)",
-};
-const SILHOUETTES = {
-  short_sleeve_shirt: "tee", long_sleeve_shirt: "longsleeve", sweater: "longsleeve",
-  jacket: "open", coat: "open", pants: "pants", shorts: "shorts", skirt: "skirt",
-  shoes: "shoes", hat: "hat", accessory: "scarf", belt: "belt",
-};
 
 /* CSS background approximating the item's pattern, for items without a photo */
 function patternFill(item) {
   const c = item.color || "#888888";
   const a = (item.accent_colors && item.accent_colors[0]) || `color-mix(in srgb, ${c} 55%, #000)`;
   const soft = `color-mix(in srgb, ${a} 55%, transparent)`;
-  const shade = "linear-gradient(90deg, rgba(0,0,0,.10), rgba(255,255,255,.06) 50%, rgba(0,0,0,.10))";
-  const scale = { micro: 4, small: 8, medium: 13, large: 22 }[item.pattern_scale] || 12;
-  let p = "";
+  const scale = { micro: 3, small: 6, medium: 9, large: 15 }[item.pattern_scale] || 9;
   switch (item.pattern) {
-    case "stripe": p = `repeating-linear-gradient(0deg, ${c} 0 ${scale}px, ${a} ${scale}px ${scale * 1.6}px)`; break;
-    case "pinstripe": p = `repeating-linear-gradient(90deg, ${c} 0 ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 1}px)`; break;
+    case "stripe": return `repeating-linear-gradient(0deg, ${c} 0 ${scale}px, ${a} ${scale}px ${scale * 1.6}px)`;
+    case "pinstripe": return `repeating-linear-gradient(90deg, ${c} 0 ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 1}px)`;
     case "check":
     case "houndstooth":
-      p = `repeating-linear-gradient(0deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 2}px), repeating-linear-gradient(90deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 2}px), ${c}`; break;
+      return `repeating-linear-gradient(0deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 2}px), repeating-linear-gradient(90deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 2}px), ${c}`;
     case "plaid":
-      p = `repeating-linear-gradient(0deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 1.6}px, transparent ${scale * 1.6}px ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 2}px), repeating-linear-gradient(90deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 1.6}px, transparent ${scale * 1.6}px ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 2}px), ${c}`; break;
-    case "polka_dot": p = `radial-gradient(${a} 22%, transparent 25%) 0 0 / ${scale * 1.4}px ${scale * 1.4}px, ${c}`; break;
-    case "solid": p = c; break;
-    default: p = `radial-gradient(circle at 30% 30%, ${soft} 0 18%, transparent 19%) 0 0 / ${scale * 2.5}px ${scale * 2.5}px, radial-gradient(circle at 70% 70%, ${soft} 0 12%, transparent 13%) 0 0 / ${scale * 2}px ${scale * 2}px, ${c}`;
+      return `repeating-linear-gradient(0deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 1.6}px, transparent ${scale * 1.6}px ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 2}px), repeating-linear-gradient(90deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 1.6}px, transparent ${scale * 1.6}px ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 2}px), ${c}`;
+    case "polka_dot": return `radial-gradient(${a} 22%, transparent 25%) 0 0 / ${scale * 1.4}px ${scale * 1.4}px, ${c}`;
+    case "solid": return c;
+    default:
+      return `radial-gradient(circle at 30% 30%, ${soft} 0 18%, transparent 19%) 0 0 / ${scale * 2.5}px ${scale * 2.5}px, radial-gradient(circle at 70% 70%, ${soft} 0 12%, transparent 13%) 0 0 / ${scale * 2}px ${scale * 2}px, ${c}`;
   }
-  return `${shade}, ${p}`;
 }
 
 const TODAY_CSS = `
+  ha-card { padding:16px; }
   .title { font-size:1.2em; font-weight:500; margin-bottom:8px; }
   .wx { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
   .wx-icon { --mdc-icon-size:44px; color:var(--state-icon-color, var(--primary-color)); }
@@ -397,26 +429,38 @@ const TODAY_CSS = `
   .wx-meta { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:2px; font-size:.85em; }
   .wx-meta span { display:inline-flex; align-items:center; gap:3px; }
   .wx-meta ha-icon { --mdc-icon-size:16px; }
-  .views { display:flex; justify-content:center; gap:6px; margin-bottom:6px; }
-  .views button.sel { background:var(--primary-color); color:var(--text-primary-color, #fff); }
-  .figure { position:relative; width:min(100%, 300px); aspect-ratio:5 / 9; margin:0 auto; border-radius:16px;
-    background:radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--primary-color) 7%, transparent), transparent 70%); }
-  .layer { position:absolute; display:flex; justify-content:center; filter:drop-shadow(0 3px 5px rgba(0,0,0,.22));
-    transition:opacity .45s ease, transform .45s ease; }
-  .layer img { width:100%; height:100%; object-fit:contain; }
-  .layer .sil { position:absolute; inset:0; }
-  .figure.afternoon .layer.removable { opacity:0; transform:translate(32%, -3%) rotate(6deg) scale(.92); pointer-events:none; }
-  .pieces { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; font-size:.8em; margin-top:10px; }
-  .piece { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:999px; background:var(--secondary-background-color);
-    transition:opacity .3s; }
-  .piece em { font-style:normal; font-size:.85em; color:var(--primary-color); }
-  .piece.off { opacity:.45; text-decoration:line-through; }
+  .banner { display:flex; gap:8px; align-items:flex-start; padding:8px 12px; border-radius:12px; margin-bottom:12px; font-size:.88em;
+    background:color-mix(in srgb, var(--primary-color) 10%, transparent); }
+  .banner ha-icon { --mdc-icon-size:18px; flex:none; color:var(--primary-color); }
+  .board { display:flex; flex-direction:column; gap:10px; }
+  .hero { display:grid; grid-template-columns:repeat(auto-fit, minmax(0, 1fr)); gap:10px; }
+  .smalls { display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:10px; }
+  .tile { position:relative; display:flex; flex-direction:column; border-radius:16px; overflow:hidden;
+    background:var(--card-background-color); border:1px solid color-mix(in srgb, var(--c, #888) 22%, var(--divider-color));
+    box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .tile .img { border-radius:0; aspect-ratio:1 / 1; }
+  .tile.lg .img { aspect-ratio:4 / 5; }
+  .tile.removable { border-style:dashed; border-color:var(--primary-color); }
+  .tile .badge { position:absolute; top:8px; left:8px; display:inline-flex; align-items:center; gap:3px; font-size:.68em; font-weight:500;
+    background:var(--primary-color); color:var(--text-primary-color, #fff); padding:2px 8px 2px 5px; border-radius:999px; }
+  .tile .badge ha-icon { --mdc-icon-size:13px; }
+  .tile .label { display:flex; flex-direction:column; padding:7px 10px 9px; gap:1px; min-width:0; }
+  .tile .name { font-size:.86em; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tile:not(.lg) .name { font-size:.78em; }
+  .tile .slot { font-size:.7em; color:var(--secondary-text-color); text-transform:uppercase; letter-spacing:.04em; }
+  .basics { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; font-size:.8em; }
+  .chip { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:999px; background:var(--secondary-background-color); }
   .dot { width:9px; height:9px; border-radius:50%; border:1px solid var(--divider-color); flex:none; }
   .why { margin:12px 0 0; padding-left:18px; font-size:.85em; color:var(--secondary-text-color); }
   .why li { margin-bottom:3px; }
   .empty { padding:24px 8px; text-align:center; }
-  .actions { display:flex; gap:6px; align-items:center; margin-top:14px; }
+  .actions { display:flex; gap:6px; align-items:center; margin-top:14px; flex-wrap:wrap; }
   .small-err { padding:8px 0 0; font-size:.85em; }
+  .closet-overlay { position:fixed; inset:0; z-index:998; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .closet-dialog { position:relative; width:min(960px, 100%); max-height:92vh; overflow:auto; border-radius:18px;
+    box-shadow:0 10px 40px rgba(0,0,0,.35); background:var(--card-background-color); }
+  .closet-dialog closet-assistant-closet-card { display:block; }
+  .close-x { position:absolute; top:12px; right:12px; z-index:2; padding:6px; }
 `;
 
 /* ================================================================== MANAGE CLOSET */
@@ -466,6 +510,9 @@ class ClosetAssistantClosetCard extends HTMLElement {
   getCardSize() {
     return 10;
   }
+  hasOpenDialog() {
+    return Boolean(this._draft || this._confirm);
+  }
   static getStubConfig() {
     return {};
   }
@@ -493,7 +540,7 @@ class ClosetAssistantClosetCard extends HTMLElement {
     const title = (this._config && this._config.title) || "Closet";
 
     this.$main.innerHTML = `
-      <div class="head">
+      <div class="head ${this._config && this._config.in_dialog ? "in-dialog" : ""}">
         <div>
           <div class="title">${esc(title)}</div>
           <div class="muted stats">${d.counts.total} items · ${d.counts.clean} clean · ${d.counts.dirty} in the hamper · laundry ${esc(weekdayName(d.next_laundry))}</div>
@@ -532,6 +579,7 @@ class ClosetAssistantClosetCard extends HTMLElement {
         : `<div class="empty muted">${d.items.length ? "Nothing matches that filter." : "Your closet is empty. Add an item, import a JSON file, or drop images into config/closet_assistant/images and scan."}</div>`}
     `;
     this._toast = null;
+    caFitImages(this.$main);
     const search = this.$main.querySelector(".search");
     if (this._refocusSearch && search) {
       search.focus();
@@ -626,6 +674,7 @@ class ClosetAssistantClosetCard extends HTMLElement {
         <button class="primary" data-action="save" ${this._busy || this._uploading ? "disabled" : ""}>Save</button>
       </div>
     </div></div>`;
+    caFitImages(this.$modal);
   }
 
   _newDraft() {
@@ -851,6 +900,8 @@ class ClosetAssistantClosetCard extends HTMLElement {
 
 const CLOSET_CSS = `
   .head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; }
+  .head.in-dialog { padding-right:44px; }
+  .item .img { border:1px solid color-mix(in srgb, var(--c, #888) 18%, var(--divider-color)); }
   .title { font-size:1.2em; font-weight:500; }
   .stats { font-size:.82em; margin-top:2px; }
   .tools { display:flex; gap:6px; align-items:center; }
