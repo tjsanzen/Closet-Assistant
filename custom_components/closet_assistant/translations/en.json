@@ -1,0 +1,123 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Closet Assistant",
+        "description": "Tell Closet Assistant where your weather comes from, how quickly your clothes get dirty and when you do laundry.",
+        "data": {
+          "weather_entity": "Weather entity",
+          "wears_per_wash": "How dirty do your clothes get?",
+          "laundry_days": "Laundry day(s)",
+          "laundry_every_weeks": "Do laundry every N weeks",
+          "laundry_time": "Laundry reset time",
+          "suggestion_time": "New outfit each morning at",
+          "temperature_sensitivity": "Temperature sensitivity",
+          "layering_threshold": "Layer when high minus low is at least (degrees)"
+        },
+        "data_description": {
+          "wears_per_wash": "Base wears between washes. Sweaters, pants and jackets get a multiple of this; underwear and socks are always 1. You can override any item.",
+          "laundry_time": "At this time on laundry days every item is marked clean again.",
+          "temperature_sensitivity": "Positive if you run cold (dresses you warmer), negative if you run hot.",
+          "layering_threshold": "Big daily swings get a layered outfit you can shed by the afternoon."
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Pick at least one laundry day."
+    },
+    "abort": {
+      "single_instance_allowed": "Closet Assistant is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Closet Assistant options",
+        "data": {
+          "weather_entity": "Weather entity",
+          "wears_per_wash": "How dirty do your clothes get?",
+          "laundry_days": "Laundry day(s)",
+          "laundry_every_weeks": "Do laundry every N weeks",
+          "laundry_time": "Laundry reset time",
+          "suggestion_time": "New outfit each morning at",
+          "temperature_sensitivity": "Temperature sensitivity",
+          "layering_threshold": "Layer when high minus low is at least (degrees)"
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Pick at least one laundry day."
+    }
+  },
+  "selector": {
+    "wears_per_wash": {
+      "options": {
+        "1": "1 - Dirtiest: wear once between washes",
+        "2": "2 - Average: wear twice between washes",
+        "3": "3 - Cleanest: wear three times between washes"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "outfit": { "name": "Outfit" },
+      "clean_items": { "name": "Clean items" }
+    },
+    "button": {
+      "randomize": { "name": "Randomize outfit" },
+      "wear_outfit": { "name": "Wear outfit" },
+      "wash_closet": { "name": "Wash closet" }
+    }
+  },
+  "services": {
+    "randomize": {
+      "name": "Randomize outfit",
+      "description": "Refresh the weather and pick a different outfit for today."
+    },
+    "wear_outfit": {
+      "name": "Wear outfit",
+      "description": "Mark today's outfit (or specific items) as worn: updates last worn and cleanliness.",
+      "fields": {
+        "item_ids": { "name": "Item IDs", "description": "Optional list of item IDs. Leave empty to wear today's suggestion." }
+      }
+    },
+    "wash_closet": {
+      "name": "Wash closet",
+      "description": "Reset cleanliness for every item, or only the listed items.",
+      "fields": {
+        "item_ids": { "name": "Item IDs", "description": "Optional list of item IDs to wash. Leave empty to wash everything." }
+      }
+    },
+    "import_closet": {
+      "name": "Import closet",
+      "description": "Import closet items from a JSON file in your config folder or from inline data.",
+      "fields": {
+        "path": { "name": "Path", "description": "File path relative to your config folder." },
+        "data": { "name": "Data", "description": "A list of items, or an object with an items list." },
+        "replace": { "name": "Replace", "description": "Delete the current closet first instead of merging." }
+      }
+    },
+    "export_closet": {
+      "name": "Export closet",
+      "description": "Return the closet as JSON and optionally write it to a file.",
+      "fields": {
+        "path": { "name": "Path", "description": "Optional file path relative to your config folder." }
+      }
+    },
+    "scan_images": {
+      "name": "Scan image folder",
+      "description": "Create draft items for images in config/closet_assistant/images that no item uses yet."
+    }
+  }
+}

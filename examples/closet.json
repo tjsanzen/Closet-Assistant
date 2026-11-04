@@ -1,0 +1,26 @@
+{
+  "items": [
+    { "name": "White crew tee", "category": "Short Sleeved Shirt", "color": "#f5f5f2", "pattern": "solid", "fabric": "cotton", "warmth": 2, "waterproof": 1, "form_fit": 7, "uv": 3, "structure": 3, "image": "white_tee.png" },
+    { "name": "Navy breton stripe tee", "category": "Short Sleeved Shirt", "color": "#f3ead3", "accent_colors": ["#1f2a44"], "pattern": "stripe", "pattern_scale": "medium", "fabric": "cotton", "warmth": 2, "form_fit": 6, "uv": 4, "structure": 4 },
+    { "name": "Light blue oxford", "category": "Long Sleeved Shirt", "color": "#9cc3e6", "pattern": "solid", "fabric": "cotton", "warmth": 4, "form_fit": 6, "uv": 6, "structure": 7 },
+    { "name": "Micro-check button down", "category": "Long Sleeved Shirt", "color": "#ffffff", "accent_colors": ["#2f62c9"], "pattern": "check", "pattern_scale": "micro", "fabric": "cotton", "warmth": 4, "form_fit": 7, "uv": 6, "structure": 6 },
+    { "name": "Charcoal merino sweater", "category": "Sweater", "color": "#36454f", "pattern": "solid", "fabric": "wool", "warmth": 5, "form_fit": 6, "uv": 7, "structure": 3 },
+    { "name": "Oatmeal cardigan", "category": "Sweater", "color": "#d9c7a7", "pattern": "solid", "fabric": "knit", "warmth": 5, "form_fit": 3, "uv": 6, "structure": 2 },
+    { "name": "Olive field jacket", "category": "Jacket", "color": "#6b6b3a", "pattern": "solid", "fabric": "cotton", "warmth": 4, "waterproof": 4, "form_fit": 4, "uv": 8, "structure": 8 },
+    { "name": "Yellow rain shell", "category": "Jacket", "color": "#f2cf3a", "pattern": "solid", "fabric": "nylon", "warmth": 2, "waterproof": 9, "form_fit": 3, "uv": 7, "structure": 6 },
+    { "name": "Camel wool overcoat", "category": "Coat", "color": "#b8865b", "pattern": "solid", "fabric": "wool", "warmth": 8, "waterproof": 3, "form_fit": 5, "uv": 9, "structure": 9 },
+    { "name": "Dark wash jeans", "category": "Pants", "color": "#2b3a55", "pattern": "solid", "fabric": "denim", "warmth": 5, "waterproof": 2, "form_fit": 7, "uv": 9, "structure": 8, "last_worn": "2026-11-01" },
+    { "name": "Khaki chinos", "category": "Pants", "color": "#b5a27a", "pattern": "solid", "fabric": "cotton", "warmth": 4, "form_fit": 5, "uv": 8, "structure": 7 },
+    { "name": "Wide-leg black trousers", "category": "Pants", "color": "#151515", "pattern": "solid", "fabric": "wool", "warmth": 5, "form_fit": 2, "uv": 9, "structure": 4 },
+    { "name": "Navy shorts", "category": "Shorts", "color": "#1f2a44", "pattern": "solid", "fabric": "cotton", "warmth": 1, "form_fit": 5, "uv": 6, "structure": 6 },
+    { "name": "Brown leather belt", "category": "Belt", "color": "#6b4a2f", "pattern": "solid", "fabric": "leather" },
+    { "name": "Brown chukka boots", "category": "Shoes", "color": "#6b4a2f", "pattern": "solid", "fabric": "suede", "warmth": 5, "waterproof": 4 },
+    { "name": "White sneakers", "category": "Shoes", "color": "#f7f7f5", "pattern": "solid", "fabric": "leather", "warmth": 3, "waterproof": 2 },
+    { "name": "Navy baseball cap", "category": "Hat", "color": "#1f2a44", "pattern": "solid", "uv": 8 },
+    { "name": "Grey wool scarf", "category": "Accessory", "color": "#8a8a8a", "pattern": "solid", "fabric": "wool", "warmth": 4 },
+    { "name": "Black boxer briefs", "category": "Underwear", "color": "#111111" },
+    { "name": "Grey boxer briefs", "category": "Underwear", "color": "#8a8a8a" },
+    { "name": "Navy socks", "category": "Socks", "color": "#1f2a44" },
+    { "name": "White athletic socks", "category": "Socks", "color": "#f7f7f5" }
+  ]
+}

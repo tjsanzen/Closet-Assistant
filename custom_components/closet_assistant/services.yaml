@@ -1,0 +1,38 @@
+randomize:
+
+wear_outfit:
+  fields:
+    item_ids:
+      example: '["a1b2c3d4e5f6"]'
+      selector:
+        object:
+
+wash_closet:
+  fields:
+    item_ids:
+      example: '["a1b2c3d4e5f6"]'
+      selector:
+        object:
+
+import_closet:
+  fields:
+    path:
+      example: "closet_assistant/closet.json"
+      selector:
+        text:
+    data:
+      selector:
+        object:
+    replace:
+      default: false
+      selector:
+        boolean:
+
+export_closet:
+  fields:
+    path:
+      example: "closet_assistant/closet_backup.json"
+      selector:
+        text:
+
+scan_images:

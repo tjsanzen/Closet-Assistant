@@ -1,0 +1,153 @@
+# Closet Assistant 👕
+
+*Your Home Assistant, now also your closet assistant.*
+
+Closet Assistant is a custom Home Assistant integration (installed with HACS) that picks an outfit for the day from your real closet. It does **not** use generative AI. It uses rule-based scoring and weighted randomness built on the day's weather, warmth layering, and outfit design rules: proportion, the 60-30-10 colour split, and pattern mixing. It also tracks how many times each piece has been worn and resets everything on laundry day.
+
+It ships with two dashboard cards:
+
+| Card | Type |
+|---|---|
+| **Wear Today**: high/low, rain chance, UV and wind, today's outfit laid out flat, **Randomize**, **Wear this**, and "Why this?" notes | `custom:closet-assistant-today-card` |
+| **Manage Closet**: add, edit, remove items, upload images, cleanliness, **Wash closet**, import/export JSON, scan the image folder | `custom:closet-assistant-closet-card` |
+
+The cards are bundled inside the integration and load on every dashboard automatically. You don't need to add a separate Lovelace resource.
+
+---
+
+## Install
+
+### HACS (custom repository)
+1. Push this folder to a GitHub repo. Then update `documentation`, `issue_tracker` and `codeowners` in `custom_components/closet_assistant/manifest.json`.
+2. In HACS, open **⋮ → Custom repositories**, add the repo URL, and pick the category **Integration**.
+3. Install **Closet Assistant** and restart Home Assistant.
+4. Go to **Settings → Devices & services → Add integration → Closet Assistant**.
+
+### Manual
+Copy `custom_components/closet_assistant` into `<config>/custom_components/` and restart.
+
+### Setup wizard
+| Setting | What it does |
+|---|---|
+| Weather entity | Any `weather.*` entity. The integration reads today's daily forecast through `weather.get_forecasts`: high, low, precipitation and chance, UV, wind. If the provider has no daily low, it falls back to the hourly forecast. |
+| How dirty do your clothes get? | **1** = dirtiest (wear once between washes), **2** = average, **3** = cleanest (wear 3 times). |
+| Laundry day(s), every N weeks, reset time | At that time on laundry days, every item goes back to clean. For example, Sunday every 2 weeks at 18:00. |
+| New outfit each morning at | When the day's suggestion is generated. The default is 05:00. |
+| Temperature sensitivity | −5 (run hot) to +5 (run cold). Each step shifts the targets by about 2 °F. |
+| Layering threshold | If high minus low is at least this many degrees, the outfit is built in layers. |
+
+You can change all of these later under **Configure**.
+
+### Add the cards
+```yaml
+type: custom:closet-assistant-today-card
+title: Wear Today        # optional
+```
+```yaml
+type: custom:closet-assistant-closet-card
+title: My Closet         # optional
+```
+Both cards also show up in the card picker.
+
+---
+
+## The three inputs
+
+### 1. Weather
+This comes from the weather entity you choose during setup. It refreshes every 30 minutes, and again whenever you press Randomize.
+
+### 2. Closet JSON
+Import a file from **Manage Closet → ⋮ → Import JSON**, or with the service:
+
+```yaml
+action: closet_assistant.import_closet
+data:
+  path: closet_assistant/closet.json   # relative to /config
+  replace: false                        # merge, or replace everything
+```
+
+See `examples/closet.json` for a full starter closet. The item fields:
+
+| Field | Values | Notes |
+|---|---|---|
+| `name` | text | |
+| `category` | `Underwear`, `Socks`, `Short Sleeved Shirt`, `Long Sleeved Shirt`, `Sweater`, `Jacket`, `Coat`, `Shorts`, `Pants`, `Skirt`, `Belt`, `Shoes`, `Hat`, `Accessory` | Labels, keys (`short_sleeve_shirt`) and common words (`jeans`, `hoodie`, `tee`, `blazer`, `sneakers`) all work. |
+| `warmth` | 1-10 | `warmpth` is accepted too 😉 |
+| `waterproof` | 1-10 | |
+| `form_fit` | 1-10 | 1 = loose/oversized, 10 = tight/fitted. `form_fitting` is accepted too. |
+| `uv` | 1-10 | |
+| `structure` | 1-10 (optional, default 5) | 1 = fluid/drapey (silk, fine knit), 10 = rigid/tailored (heavy denim, wool, leather). Drives the structured-vs-fluid rule. |
+| `color` | hex, e.g. `#1f2a44` | The main colour. |
+| `accent_colors` | list of hex | The other colours in a pattern, or trim. Used for the "anchor with a common colour" rule. |
+| `pattern` | `solid`, `stripe`, `pinstripe`, `check`, `plaid`, `houndstooth`, `polka_dot`, `geometric`, `floral`, `paisley`, `abstract`, `animal`, `camo`, `graphic` | |
+| `pattern_scale` | `micro`, `small`, `medium`, `large` | Each pattern has a default. |
+| `fabric` | `cotton`, `denim`, `linen`, `wool`, `knit`, `fleece`, `silk`, `satin`, `leather`, `suede`, `corduroy`, `tweed`, `nylon`, `synthetic`, `other` | Optional. Used for texture variety in tonal outfits. |
+| `image` | file name, `/local/...` path or URL | A bare file name is looked up in `config/closet_assistant/images/`. |
+| `last_worn` | `YYYY-MM-DD` | |
+| `wears_since_wash` (or `cleanliness`) | integer | `cleanliness` = wears left before the item needs washing. |
+| `max_wears` | integer (optional) | Overrides the default wears between washes for that item. |
+
+**Default wears between washes** = your setup level × a category multiplier. Shirts, shorts and skirts get ×1, sweaters and pants ×2, jackets ×4, and coats ×6. Underwear and socks are always 1. Belts, shoes, hats and accessories never go in the hamper.
+
+### 3. Closet images
+- Upload an image in the item editor. It's resized in the browser to 640 px and saved as WebP with its transparency kept. The item's main colour is **detected automatically** from the opaque pixels.
+- Or drop images into `config/closet_assistant/images/` and use **⋮ → Scan image folder** (or the `closet_assistant.scan_images` action). This creates a draft item for every unused image, guessing the category from the file name (`jeans_dark-wash.png` becomes Pants). Drafts are marked **review**, so tap them to fill in the ratings.
+- Square or portrait images with a transparent background look best on the cards.
+
+> Images are served from `/closet_assistant/images/` with random file names. Like `/local/`, that path does not require a login, so don't upload anything private.
+
+---
+
+## How an outfit is chosen
+
+1. **Weather → warmth targets.** The torso target is `(88 − °F) / 3.5` warmth points: about 5 at 72 °F, 8 at 60 °F, 14 at 40 °F. Legs get `(85 − °F) / 5`. Wind (15 mph and up) and rain add a little. Your sensitivity setting shifts the temperature first.
+2. **Layering.** If the high/low swing is at or above your threshold, the outfit's **full** warmth (top + sweater + jacket, plus half a scarf) must suit the **low**. The engine then tries shedding the jacket, the sweater, or both, and finds the combination that best suits the **high**. Pieces to shed are marked *shed later* on the card.
+3. **A few hundred candidates.** It assembles random combinations of clean items: a top and a bottom always, then a sweater, outer layer, shoes, belt, hat or accessory, each with odds that depend on the weather.
+4. **Scoring.** Each candidate is scored on:
+   - **Warmth fit.** Being too cold costs more than being too warm.
+   - **Rain.** When rain is likely, the outer layer needs waterproof ≥ 6, and shoes get a small check too.
+   - **UV.** At UV 3 and up, what you wear at peak sun is checked for UV protection, and a hat is wanted at UV 6 and up.
+   - **Volume and proportion (2/3 rule).** All-tight or all-loose outfits lose points. A fitted top with a loose bottom, or the reverse, scores best.
+   - **Structured vs fluid.** It rewards mixing rigid and drapey pieces.
+   - **60-30-10.** Colours are weighted by how much of you each piece covers, grouped by perceptual similarity (CIELAB), and compared to a 60/30/10 split.
+   - **Tonal dressing.** A single colour family is fine *if* the fabrics or structures vary. Otherwise it reads as flat and loses points.
+   - **Hue harmony.** Analogous, triadic and complementary combinations are rewarded. Neutrals (black, white, greys, navy, denim, khaki, tan, olive) go with everything. More than three bright colour families loses points.
+   - **Pattern mixing.** Same-scale patterns and same-type patterns (two geometrics) lose points, and so do three or more patterns. A shared colour between patterns, or a solid neutral bridging them, rescues the mix.
+   - **Belt matches shoes.**
+   - **Rotation.** Items worn today or in the last couple of days lose points. Items not worn in two weeks get a bonus. Repeating a top+bottom combo from the past 14 days loses points.
+5. **Weighted random pick.** It picks among the top 6 with softmax weights. **Randomize** also lightly avoids the pieces in the outfit you're replacing.
+
+Value contrast (high vs low) is reported in the "Why this?" notes but not penalised, since both looks are valid.
+
+## Wearing and washing
+- **Wear this** marks every piece as worn today and uses up one wear. An item at 0 wears left goes to the *hamper* and isn't suggested again until it's washed.
+- **Wash closet** (on the card, the button entity or `closet_assistant.wash_closet`) resets everything. Laundry day does this automatically.
+- In the item editor: **Mark clean** washes one item, and **Wore it today** logs a single piece.
+
+## Entities
+| Entity | |
+|---|---|
+| `sensor.closet_assistant_outfit` | State: today's outfit. Attributes: `items`, `removable`, `notes`, `high`, `low`, `worn`, `layered`. |
+| `sensor.closet_assistant_clean_items` | Count of clean items. Attributes: `in_hamper`, `total_items`, `last_wash`, `next_laundry`. |
+| `button.closet_assistant_randomize_outfit` / `_wear_outfit` / `_wash_closet` | For automations and other dashboards. |
+
+Example automation, a morning notification:
+```yaml
+triggers:
+  - trigger: time
+    at: "06:30:00"
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      title: "Wear today ({{ state_attr('sensor.closet_assistant_outfit','high') }}°/{{ state_attr('sensor.closet_assistant_outfit','low') }}°)"
+      message: "{{ states('sensor.closet_assistant_outfit') }}"
+```
+
+## Actions
+`closet_assistant.randomize`, `wear_outfit` (optional `item_ids`), `wash_closet` (optional `item_ids`), `import_closet` (`path` or `data`, `replace`), `export_closet` (optional `path`, also returns JSON), `scan_images`.
+
+## Data
+Everything is stored in `config/.storage/closet_assistant.closet`, and images are in `config/closet_assistant/images/`. Both are included in normal HA backups.
+
+## Ideas for later
+Dresses and other one-piece outfits, occasion or formality tags, per-person closets, "wear tomorrow" after a set evening time, and wear-count statistics.
