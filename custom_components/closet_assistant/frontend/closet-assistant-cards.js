@@ -4,7 +4,7 @@
  *   custom:closet-assistant-closet-card  - "Manage Closet"
  * Served and auto-loaded by the closet_assistant integration. No build step.
  */
-const CA_VERSION = "0.1.0";
+const CA_VERSION = "0.1.1";
 const DOMAIN = "closet_assistant";
 
 /* ------------------------------------------------------------------ shared store */
@@ -819,8 +819,34 @@ const CLOSET_CSS = `
   .dlg-actions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; align-items:center; }
 `;
 
-customElements.get("closet-assistant-today-card") || customElements.define("closet-assistant-today-card", ClosetAssistantTodayCard);
-customElements.get("closet-assistant-closet-card") || customElements.define("closet-assistant-closet-card", ClosetAssistantClosetCard);
+/*
+ * Registration. Home Assistant can swap in its own custom-element registry
+ * after startup; a card defined before that is invisible to the dashboard,
+ * which then waits on it forever. So keep (re)registering every 500 ms for
+ * the first minute. Each attempt defines a fresh subclass, because one
+ * constructor can't be registered under two registries.
+ */
+const CA_ELEMENTS = {
+  "closet-assistant-today-card": ClosetAssistantTodayCard,
+  "closet-assistant-closet-card": ClosetAssistantClosetCard,
+};
+function caRegister() {
+  const registry = window.customElements;
+  for (const [tag, Base] of Object.entries(CA_ELEMENTS)) {
+    if (registry.get(tag)) continue;
+    try {
+      registry.define(tag, class extends Base {});
+    } catch (err) {
+      /* already defined in this registry, or the registry isn't ready yet */
+    }
+  }
+}
+caRegister();
+let caTries = 0;
+const caTimer = setInterval(() => {
+  caRegister();
+  if (++caTries >= 120) clearInterval(caTimer);
+}, 500);
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some((c) => c.type === "closet-assistant-today-card")) {

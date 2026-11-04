@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "closet_assistant"
 NAME = "Closet Assistant"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 STORAGE_KEY = f"{DOMAIN}.closet"
 STORAGE_VERSION = 1

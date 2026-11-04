@@ -146,6 +146,12 @@ actions:
 ## Actions
 `closet_assistant.randomize`, `wear_outfit` (optional `item_ids`), `wash_closet` (optional `item_ids`), `import_closet` (`path` or `data`, `replace`), `export_closet` (optional `path`, also returns JSON), `scan_images`.
 
+## Troubleshooting
+**A card spins forever.** Open the browser console (F12) and look for `CLOSET ASSISTANT v0.1.x`.
+- If you see *"Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of 'text/plain'"*, you're still on 0.1.0. Since 0.1.1 the card is served by a view that always sends `text/javascript`.
+- Don't add a Lovelace resource for the card, and especially not a `raw.githubusercontent.com` link, which GitHub always sends as plain text. The integration loads the card itself. If you added one manually, delete it under **Settings → Dashboards → ⋮ → Resources**.
+- After updating, restart Home Assistant and hard-refresh the browser (or clear the app's frontend cache on mobile).
+
 ## Data
 Everything is stored in `config/.storage/closet_assistant.closet`, and images are in `config/closet_assistant/images/`. Both are included in normal HA backups.
 
