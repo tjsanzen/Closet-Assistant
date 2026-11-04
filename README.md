@@ -1,3 +1,4 @@
+![logo](https://github.com/tjsanzen/Closet-Assistant/blob/main/img/icon.png)
 # Closet Assistant
 
 *Your Home Assistant, now also your closet assistant.*
@@ -12,6 +13,12 @@ It ships with two dashboard cards:
 | **Manage Closet**: add, edit, remove items, upload images, cleanliness, **Wash closet**, import/export JSON, scan the image folder | `custom:closet-assistant-closet-card` |
 
 The cards are bundled inside the integration and load on every dashboard automatically, so that you don't need to add a separate Lovelace resource.
+
+## Wear Today:
+![Wear Today Dashboard](https://github.com/tjsanzen/Closet-Assistant/blob/main/img/daily_wear.png)
+
+## Closet:
+![Closet Management](https://github.com/tjsanzen/Closet-Assistant/blob/main/img/closet.png)
 
 ---
 
