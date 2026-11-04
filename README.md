@@ -8,7 +8,7 @@ It ships with two dashboard cards:
 
 | Card | Type |
 |---|---|
-| **Wear Today**: high/low, rain chance, UV and wind, today's outfit laid out flat, **Randomize**, **Wear this**, and "Why this?" notes | `custom:closet-assistant-today-card` |
+| **Wear Today**: high/low, rain chance, UV and wind, today's outfit **layered on a figure** the way it's worn, a **Morning / Afternoon** toggle that sheds the removable layers, **Randomize**, **Wear this**, and "Why this?" notes | `custom:closet-assistant-today-card` |
 | **Manage Closet**: add, edit, remove items, upload images, cleanliness, **Wash closet**, import/export JSON, scan the image folder | `custom:closet-assistant-closet-card` |
 
 The cards are bundled inside the integration and load on every dashboard automatically. You don't need to add a separate Lovelace resource.
@@ -93,6 +93,7 @@ See `examples/closet.json` for a full starter closet. The item fields:
 - Upload an image in the item editor. It's resized in the browser to 640 px and saved as WebP with its transparency kept. The item's main colour is **detected automatically** from the opaque pixels.
 - Or drop images into `config/closet_assistant/images/` and use **⋮ → Scan image folder** (or the `closet_assistant.scan_images` action). This creates a draft item for every unused image, guessing the category from the file name (`jeans_dark-wash.png` becomes Pants). Drafts are marked **review**, so tap them to fill in the ratings.
 - Square or portrait images with a transparent background look best on the cards.
+- **How images are layered on the Wear Today figure.** Each piece is fitted into its own box on a portrait figure and stacked in the order it's worn: pants, belt, shirt, sweater, jacket, scarf, hat, with shoes at the feet. Shirts, sweaters, jackets and pants hang from the top of their box (shoulders, waistband). Hats and shoes sit on the bottom of theirs. For the best fit, crop each photo tight to the garment, shot front-on and flat. Pieces without a photo are drawn as a silhouette in the item's colour and pattern.
 
 > Images are served from `/closet_assistant/images/` with random file names. Like `/local/`, that path does not require a login, so don't upload anything private.
 
@@ -147,10 +148,13 @@ actions:
 `closet_assistant.randomize`, `wear_outfit` (optional `item_ids`), `wash_closet` (optional `item_ids`), `import_closet` (`path` or `data`, `replace`), `export_closet` (optional `path`, also returns JSON), `scan_images`.
 
 ## Troubleshooting
-**A card spins forever.** Open the browser console (F12) and look for `CLOSET ASSISTANT v0.1.x`.
+**A card spins forever.** Open the browser console (F12) and look for `CLOSET ASSISTANT v0.x`.
 - If you see *"Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of 'text/plain'"*, you're still on 0.1.0. Since 0.1.1 the card is served by a view that always sends `text/javascript`.
 - Don't add a Lovelace resource for the card, and especially not a `raw.githubusercontent.com` link, which GitHub always sends as plain text. The integration loads the card itself. If you added one manually, delete it under **Settings → Dashboards → ⋮ → Resources**.
 - After updating, restart Home Assistant and hard-refresh the browser (or clear the app's frontend cache on mobile).
+
+## Icon
+Put a square `icon.png` (256×256, plus an optional 512×512 `icon@2x.png`) in `custom_components/closet_assistant/brand/`. You can also add `logo.png`, `dark_icon.png` and `dark_logo.png`. Home Assistant 2026.3 and later show it on the integration page with no extra setup.
 
 ## Data
 Everything is stored in `config/.storage/closet_assistant.closet`, and images are in `config/closet_assistant/images/`. Both are included in normal HA backups.

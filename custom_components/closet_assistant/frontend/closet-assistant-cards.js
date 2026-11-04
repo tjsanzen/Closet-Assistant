@@ -4,7 +4,7 @@
  *   custom:closet-assistant-closet-card  - "Manage Closet"
  * Served and auto-loaded by the closet_assistant integration. No build step.
  */
-const CA_VERSION = "0.1.1";
+const CA_VERSION = "0.2.0";
 const DOMAIN = "closet_assistant";
 
 /* ------------------------------------------------------------------ shared store */
@@ -213,6 +213,19 @@ class ClosetAssistantTodayCard extends HTMLElement {
       this._showWhy = !this._showWhy;
       return this._render();
     }
+    if (action === "view") {
+      // Morning <-> afternoon: toggle classes in place so the shed layers animate away
+      this._view = btn.dataset.view;
+      const fig = this.shadowRoot.querySelector(".figure");
+      if (fig) fig.classList.toggle("afternoon", this._view === "afternoon");
+      this.shadowRoot.querySelectorAll('[data-action="view"]').forEach((b) =>
+        b.classList.toggle("sel", b.dataset.view === this._view)
+      );
+      this.shadowRoot.querySelectorAll(".piece.removable").forEach((p) =>
+        p.classList.toggle("off", this._view === "afternoon")
+      );
+      return;
+    }
     this._busy = true;
     this._render();
     try {
@@ -225,13 +238,24 @@ class ClosetAssistantTodayCard extends HTMLElement {
     this._render();
   }
 
-  _tile(item, cats, small = false) {
-    return `<div class="tile ${item.removable ? "removable" : ""} ${small ? "small" : ""}" title="${esc(item.name)}">
-      ${itemVisual(item, cats)}
-      ${item.removable ? `<span class="badge">shed later</span>` : ""}
-      <div class="cap">${esc(item.name)}</div>
-      ${small ? "" : `<div class="slot">${esc(SLOT_LABELS[item.slot] || "")}</div>`}
-    </div>`;
+  /* One clothing layer placed on the figure. Real images when available,
+     otherwise a coloured silhouette in the item's colour and pattern. */
+  _layer(item) {
+    const zone = { ...FIGURE_ZONES[item.slot] };
+    if (item.slot === "bottom" && BOTTOM_HEIGHT[item.category]) zone.h = BOTTOM_HEIGHT[item.category];
+    const left = (100 - zone.w) / 2;
+    const style = `top:${zone.top}%;height:${zone.h}%;width:${zone.w}%;left:${left}%;z-index:${zone.z}`;
+    let inner;
+    if (item.image_url) {
+      inner = `<img src="${esc(item.image_url)}" alt="${esc(item.name)}" style="object-position:center ${zone.pos}">`;
+    } else {
+      const shape = SILHOUETTES[item.category] || "solid";
+      const fill = `background:${patternFill(item)}`;
+      inner = shape === "open"
+        ? `<div class="sil" style="${fill};clip-path:${SHAPES.jacketL}"></div><div class="sil" style="${fill};clip-path:${SHAPES.jacketR}"></div>`
+        : `<div class="sil" style="${fill};clip-path:${SHAPES[shape] || "none"};${shape === "solid" ? "border-radius:12px" : ""}"></div>`;
+    }
+    return `<div class="layer s-${item.slot} ${item.removable ? "removable" : ""}" style="${style}" title="${esc(item.name)}">${inner}</div>`;
   }
 
   _render() {
@@ -246,14 +270,15 @@ class ClosetAssistantTodayCard extends HTMLElement {
     } else {
       const w = d.weather || {};
       const t = d.today || { items: [], notes: [] };
-      const cats = d.categories;
-      const by = {};
-      for (const it of t.items || []) by[it.slot] = it;
-      const layers = ["top", "mid", "outer"].filter((s) => by[s]);
-      const lower = ["bottom", "belt", "shoes"].filter((s) => by[s]);
-      const extras = ["hat", "accessory"].filter((s) => by[s]);
-      const basics = ["underwear", "socks"].filter((s) => by[s]);
-      const removable = (t.items || []).filter((i) => i.removable);
+      const items = t.items || [];
+      const key = `${t.date}|${items.map((i) => i.id).join(",")}`;
+      if (key !== this._outfitKey) {
+        this._outfitKey = key;
+        this._view = "morning"; // a new outfit always starts fully layered
+      }
+      const removable = items.filter((i) => i.removable);
+      const onFigure = items.filter((i) => FIGURE_ZONES[i.slot]);
+      const afternoon = removable.length && this._view === "afternoon";
       const meta = [];
       if (w.precip_prob !== null && w.precip_prob !== undefined) meta.push(`<span><ha-icon icon="mdi:water-percent"></ha-icon>${Math.round(w.precip_prob)}%</span>`);
       if (w.uv !== null && w.uv !== undefined) meta.push(`<span><ha-icon icon="mdi:sun-wireless-outline"></ha-icon>UV ${esc(w.uv)}</span>`);
@@ -268,15 +293,17 @@ class ClosetAssistantTodayCard extends HTMLElement {
           </div>
           <div class="wx-meta muted">${meta.join("")}</div>
         </div>
-        ${removable.length
-          ? `<div class="banner"><ha-icon icon="mdi:layers-triple-outline"></ha-icon>
-             Big swing today. Start layered, shed the ${removable.map((i) => esc(i.name)).join(" and ")} by the afternoon.</div>`
-          : ""}
-        ${t.items && t.items.length
-          ? `<div class="lay">
-              <div class="row layers">${layers.map((s) => this._tile(by[s], cats)).join('<span class="plus">+</span>')}</div>
-              <div class="row">${lower.map((s) => this._tile(by[s], cats)).join("")}${extras.map((s) => this._tile(by[s], cats)).join("")}</div>
-              ${basics.length ? `<div class="basics muted">${basics.map((s) => `<span class="chip"><span class="dot" style="background:${esc(by[s].color)}"></span>${esc(by[s].name)}</span>`).join("")}</div>` : ""}
+        ${items.length
+          ? `${removable.length
+              ? `<div class="views">
+                  <button class="small ${afternoon ? "" : "sel"}" data-action="view" data-view="morning"><ha-icon icon="mdi:weather-sunset-up"></ha-icon>Morning ${fmtTemp(w.low)}</button>
+                  <button class="small ${afternoon ? "sel" : ""}" data-action="view" data-view="afternoon"><ha-icon icon="mdi:white-balance-sunny"></ha-icon>Afternoon ${fmtTemp(w.high)}</button>
+                </div>`
+              : ""}
+            <div class="figure ${afternoon ? "afternoon" : ""}">${onFigure.map((i) => this._layer(i)).join("")}</div>
+            <div class="pieces">
+              ${items.map((i) => `<span class="piece ${i.removable ? "removable" : ""} ${afternoon && i.removable ? "off" : ""}" title="${esc(SLOT_LABELS[i.slot] || "")}">
+                <span class="dot" style="background:${esc(i.color)}"></span>${esc(i.name)}${i.removable ? `<em>shed later</em>` : ""}</span>`).join("")}
             </div>`
           : `<div class="empty muted">${esc((t.notes || [])[0] || "No outfit yet. Add clothes in the Manage Closet card.")}</div>`}
         ${this._showWhy && t.notes && t.notes.length ? `<ul class="why">${t.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
@@ -286,7 +313,7 @@ class ClosetAssistantTodayCard extends HTMLElement {
             <ha-icon icon="mdi:dice-multiple"></ha-icon>Randomize</button>
           ${t.notes && t.notes.length ? `<button class="small" data-action="why"><ha-icon icon="mdi:information-outline"></ha-icon>${this._showWhy ? "Hide" : "Why this?"}</button>` : ""}
           <span style="flex:1"></span>
-          ${t.items && t.items.length
+          ${items.length
             ? t.worn
               ? `<button class="small" disabled><ha-icon icon="mdi:check"></ha-icon>Worn today</button>`
               : `<button class="small primary" data-action="wear" ${this._busy ? "disabled" : ""}><ha-icon icon="mdi:hanger"></ha-icon>Wear this</button>`
@@ -299,6 +326,67 @@ class ClosetAssistantTodayCard extends HTMLElement {
   }
 }
 
+/* ------------------------------------------------------------------ outfit figure
+ * Every slot has a box on a 5:9 portrait canvas (percentages of width/height).
+ * Stacking follows how clothes are actually worn: pants, then belt, then shirt
+ * (its hem overlaps the waistband), sweater, jacket, scarf, hat.
+ * Images are fitted inside their box with object-fit: contain; tops and bottoms
+ * hang from the top edge (shoulders / waistband), shoes and hats sit on the bottom edge.
+ */
+const FIGURE_ZONES = {
+  hat:       { top: 0,    h: 12, w: 36, z: 8, pos: "bottom" },
+  accessory: { top: 9,    h: 18, w: 42, z: 7, pos: "top" },
+  outer:     { top: 10,   h: 39, w: 90, z: 6, pos: "top" },
+  mid:       { top: 11,   h: 36, w: 84, z: 5, pos: "top" },
+  top:       { top: 11.5, h: 35, w: 80, z: 4, pos: "top" },
+  belt:      { top: 44,   h: 5,  w: 48, z: 3, pos: "center" },
+  bottom:    { top: 45,   h: 43, w: 62, z: 2, pos: "top" },
+  shoes:     { top: 87,   h: 13, w: 56, z: 1, pos: "bottom" },
+};
+const BOTTOM_HEIGHT = { shorts: 22, skirt: 30 };
+
+const SHAPES = {
+  tee: "polygon(32% 0,68% 0,100% 17%,90% 37%,80% 31%,80% 100%,20% 100%,20% 31%,10% 37%,0 17%)",
+  longsleeve: "polygon(32% 0,68% 0,100% 18%,100% 96%,87% 96%,82% 34%,80% 100%,20% 100%,18% 34%,13% 96%,0 96%,0 18%)",
+  jacketL: "polygon(28% 0,47% 0,48% 100%,19% 100%,17% 34%,13% 98%,0 98%,0 19%)",
+  jacketR: "polygon(53% 0,72% 0,100% 19%,100% 98%,87% 98%,83% 34%,81% 100%,52% 100%)",
+  pants: "polygon(7% 0,93% 0,100% 100%,56% 100%,50% 16%,44% 100%,0 100%)",
+  shorts: "polygon(5% 0,95% 0,100% 100%,55% 100%,50% 38%,45% 100%,0 100%)",
+  skirt: "polygon(18% 0,82% 0,100% 100%,0 100%)",
+  shoes: "polygon(4% 45%,38% 30%,46% 55%,46% 100%,0 100%,0 70%,54% 55%,62% 30%,96% 45%,100% 70%,100% 100%,54% 100%)",
+  hat: "polygon(22% 20%,78% 20%,84% 80%,100% 88%,100% 100%,0 100%,0 88%,16% 80%)",
+  scarf: "polygon(15% 0,85% 0,85% 30%,62% 40%,66% 100%,48% 100%,44% 42%,15% 30%)",
+  belt: "polygon(0 15%,100% 15%,100% 85%,0 85%)",
+};
+const SILHOUETTES = {
+  short_sleeve_shirt: "tee", long_sleeve_shirt: "longsleeve", sweater: "longsleeve",
+  jacket: "open", coat: "open", pants: "pants", shorts: "shorts", skirt: "skirt",
+  shoes: "shoes", hat: "hat", accessory: "scarf", belt: "belt",
+};
+
+/* CSS background approximating the item's pattern, for items without a photo */
+function patternFill(item) {
+  const c = item.color || "#888888";
+  const a = (item.accent_colors && item.accent_colors[0]) || `color-mix(in srgb, ${c} 55%, #000)`;
+  const soft = `color-mix(in srgb, ${a} 55%, transparent)`;
+  const shade = "linear-gradient(90deg, rgba(0,0,0,.10), rgba(255,255,255,.06) 50%, rgba(0,0,0,.10))";
+  const scale = { micro: 4, small: 8, medium: 13, large: 22 }[item.pattern_scale] || 12;
+  let p = "";
+  switch (item.pattern) {
+    case "stripe": p = `repeating-linear-gradient(0deg, ${c} 0 ${scale}px, ${a} ${scale}px ${scale * 1.6}px)`; break;
+    case "pinstripe": p = `repeating-linear-gradient(90deg, ${c} 0 ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 1}px)`; break;
+    case "check":
+    case "houndstooth":
+      p = `repeating-linear-gradient(0deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 2}px), repeating-linear-gradient(90deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 2}px), ${c}`; break;
+    case "plaid":
+      p = `repeating-linear-gradient(0deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 1.6}px, transparent ${scale * 1.6}px ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 2}px), repeating-linear-gradient(90deg, transparent 0 ${scale}px, ${soft} ${scale}px ${scale * 1.6}px, transparent ${scale * 1.6}px ${scale * 2}px, ${a} ${scale * 2}px ${scale * 2 + 2}px), ${c}`; break;
+    case "polka_dot": p = `radial-gradient(${a} 22%, transparent 25%) 0 0 / ${scale * 1.4}px ${scale * 1.4}px, ${c}`; break;
+    case "solid": p = c; break;
+    default: p = `radial-gradient(circle at 30% 30%, ${soft} 0 18%, transparent 19%) 0 0 / ${scale * 2.5}px ${scale * 2.5}px, radial-gradient(circle at 70% 70%, ${soft} 0 12%, transparent 13%) 0 0 / ${scale * 2}px ${scale * 2}px, ${c}`;
+  }
+  return `${shade}, ${p}`;
+}
+
 const TODAY_CSS = `
   .title { font-size:1.2em; font-weight:500; margin-bottom:8px; }
   .wx { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
@@ -309,21 +397,21 @@ const TODAY_CSS = `
   .wx-meta { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:2px; font-size:.85em; }
   .wx-meta span { display:inline-flex; align-items:center; gap:3px; }
   .wx-meta ha-icon { --mdc-icon-size:16px; }
-  .banner { display:flex; gap:8px; align-items:flex-start; padding:8px 12px; border-radius:10px; margin-bottom:12px; font-size:.9em;
-    background:color-mix(in srgb, var(--primary-color) 12%, transparent); }
-  .banner ha-icon { --mdc-icon-size:18px; flex:none; }
-  .lay { display:flex; flex-direction:column; gap:10px; }
-  .row { display:flex; gap:8px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
-  .plus { align-self:center; color:var(--secondary-text-color); font-size:1.3em; margin-top:-24px; }
-  .tile { position:relative; width:min(30%, 140px); text-align:center; }
-  .tile.removable .img { outline:2px dashed var(--primary-color); outline-offset:-2px; }
-  .tile .badge { position:absolute; top:6px; left:50%; transform:translateX(-50%); font-size:.7em; white-space:nowrap;
-    background:var(--primary-color); color:var(--text-primary-color, #fff); padding:1px 7px; border-radius:999px; }
-  .tile .cap { font-size:.85em; margin-top:4px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-  .tile .slot { font-size:.72em; color:var(--secondary-text-color); }
-  .basics { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; font-size:.8em; }
-  .chip { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; background:var(--secondary-background-color); }
-  .dot { width:9px; height:9px; border-radius:50%; border:1px solid var(--divider-color); }
+  .views { display:flex; justify-content:center; gap:6px; margin-bottom:6px; }
+  .views button.sel { background:var(--primary-color); color:var(--text-primary-color, #fff); }
+  .figure { position:relative; width:min(100%, 300px); aspect-ratio:5 / 9; margin:0 auto; border-radius:16px;
+    background:radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--primary-color) 7%, transparent), transparent 70%); }
+  .layer { position:absolute; display:flex; justify-content:center; filter:drop-shadow(0 3px 5px rgba(0,0,0,.22));
+    transition:opacity .45s ease, transform .45s ease; }
+  .layer img { width:100%; height:100%; object-fit:contain; }
+  .layer .sil { position:absolute; inset:0; }
+  .figure.afternoon .layer.removable { opacity:0; transform:translate(32%, -3%) rotate(6deg) scale(.92); pointer-events:none; }
+  .pieces { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; font-size:.8em; margin-top:10px; }
+  .piece { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:999px; background:var(--secondary-background-color);
+    transition:opacity .3s; }
+  .piece em { font-style:normal; font-size:.85em; color:var(--primary-color); }
+  .piece.off { opacity:.45; text-decoration:line-through; }
+  .dot { width:9px; height:9px; border-radius:50%; border:1px solid var(--divider-color); flex:none; }
   .why { margin:12px 0 0; padding-left:18px; font-size:.85em; color:var(--secondary-text-color); }
   .why li { margin-bottom:3px; }
   .empty { padding:24px 8px; text-align:center; }
