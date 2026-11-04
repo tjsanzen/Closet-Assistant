@@ -4,10 +4,10 @@
   "codeowners": [],
   "config_flow": true,
   "dependencies": ["frontend", "http", "websocket_api"],
-  "documentation": "https://github.com/YOUR_GITHUB_USERNAME/closet-assistant",
+  "documentation": "https://github.com/tjsanzen/Closet-Assistant",
   "integration_type": "service",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/YOUR_GITHUB_USERNAME/closet-assistant/issues",
+  "issue_tracker": "https://github.com/tjsanzen/Closet-Assistant/issues",
   "requirements": [],
   "single_config_entry": true,
   "version": "0.3.1"
