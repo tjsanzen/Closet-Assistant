@@ -1,0 +1,123 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Closet Assistant",
+        "description": "Indica a Closet Assistant de dónde obtiene el pronóstico del tiempo, qué tan rápido se ensucia tu ropa y cuándo lavas la ropa.",
+        "data": {
+          "weather_entity": "Entidad meteorológica",
+          "wears_per_wash": "¿Qué tan sucia se pone tu ropa?",
+          "laundry_days": "Día(s) de lavado",
+          "laundry_every_weeks": "Lavar la ropa cada N semanas",
+          "laundry_time": "Hora de restablecimiento de lavado",
+          "suggestion_time": "Nuevo conjunto cada mañana a las",
+          "temperature_sensitivity": "Sensibilidad a la temperatura",
+          "layering_threshold": "Poner capas cuando la máxima menos la mínima sea al menos (grados)"
+        },
+        "data_description": {
+          "wears_per_wash": "Uso base entre lavados. Los jerséis, pantalones y chaquetas reciben un múltiplo de esto; la ropa interior y los calcetines son siempre 1. Puedes anular cualquier artículo.",
+          "laundry_time": "A esta hora en los días de lavado, todos los artículos vuelven a marcarse como limpios.",
+          "temperature_sensitivity": "Positivo si eres friolero/a (te viste más abrigado), negativo si eres caluroso/a.",
+          "layering_threshold": "Las grandes oscilaciones diarias requieren un conjunto en capas del que puedas prescindir por la tarde."
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Elige al menos un día de lavado."
+    },
+    "abort": {
+      "single_instance_allowed": "Closet Assistant ya está configurado."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones de Closet Assistant",
+        "data": {
+          "weather_entity": "Entidad meteorológica",
+          "wears_per_wash": "¿Qué tan sucia se pone tu ropa?",
+          "laundry_days": "Día(s) de lavado",
+          "laundry_every_weeks": "Lavar la ropa cada N semanas",
+          "laundry_time": "Hora de restablecimiento de lavado",
+          "suggestion_time": "Nuevo conjunto cada mañana a las",
+          "temperature_sensitivity": "Sensibilidad a la temperatura",
+          "layering_threshold": "Poner capas cuando la máxima menos la mínima sea al menos (grados)"
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Elige al menos un día de lavado."
+    }
+  },
+  "selector": {
+    "wears_per_wash": {
+      "options": {
+        "1": "1 - Muy sucio: usar una vez entre lavados",
+        "2": "2 - Promedio: usar dos veces entre lavados",
+        "3": "3 - Más limpio: usar tres veces entre lavados"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Lunes",
+        "tue": "Martes",
+        "wed": "Miércoles",
+        "thu": "Jueves",
+        "fri": "Viernes",
+        "sat": "Sábado",
+        "sun": "Domingo"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "outfit": { "name": "Conjunto" },
+      "clean_items": { "name": "Prendas limpias" }
+    },
+    "button": {
+      "randomize": { "name": "Conjunto aleatorio" },
+      "wear_outfit": { "name": "Llevar conjunto" },
+      "wash_closet": { "name": "Lavar armario" }
+    }
+  },
+  "services": {
+    "randomize": {
+      "name": "Conjunto aleatorio",
+      "description": "Actualiza el clima y elige un conjunto diferente para hoy."
+    },
+    "wear_outfit": {
+      "name": "Llevar conjunto",
+      "description": "Marca el conjunto de hoy (o prendas específicas) como usado: actualiza el último uso y la limpieza.",
+      "fields": {
+        "item_ids": { "name": "IDs de artículos", "description": "Lista opcional de IDs de artículos. Déjalo vacío para usar la sugerencia de hoy." }
+      }
+    },
+    "wash_closet": {
+      "name": "Lavar armario",
+      "description": "Restablece la limpieza de cada artículo, o solo de los artículos enumerados.",
+      "fields": {
+        "item_ids": { "name": "IDs de artículos", "description": "Lista opcional de IDs de artículos para lavar. Déjalo vacío para lavar todo." }
+      }
+    },
+    "import_closet": {
+      "name": "Importar armario",
+      "description": "Importa artículos del armario desde un archivo JSON en tu carpeta de configuración o desde datos en línea.",
+      "fields": {
+        "path": { "name": "Ruta", "description": "Ruta del archivo relativa a tu carpeta de configuración." },
+        "data": { "name": "Datos", "description": "Una lista de artículos, o un objeto con una lista de artículos." },
+        "replace": { "name": "Reemplazar", "description": "Eliminar el armario actual primero en lugar de fusionar." }
+      }
+    },
+    "export_closet": {
+      "name": "Exportar armario",
+      "description": "Devuelve el armario como JSON y opcionalmente lo escribe en un archivo.",
+      "fields": {
+        "path": { "name": "Ruta", "description": "Ruta de archivo opcional relativa a tu carpeta de configuración." }
+      }
+    },
+    "scan_images": {
+      "name": "Escanear carpeta de imágenes",
+      "description": "Crea borradores de artículos para las imágenes en config/closet_assistant/images que ningún artículo use todavía."
+    }
+  }
+}

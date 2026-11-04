@@ -1,0 +1,123 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Määritä Vaatekaappiassistentti",
+        "description": "Kerro Vaatekaappiassistentille, mistä säätietosi tulevat, kuinka nopeasti vaatteesi likaantuvat ja milloin peset pyykkiä.",
+        "data": {
+          "weather_entity": "Sääentiteetti",
+          "wears_per_wash": "Kuinka likaisiksi vaatteesi tulevat?",
+          "laundry_days": "Pyykkipäivä(t)",
+          "laundry_every_weeks": "Pese pyykkiä joka N. viikko",
+          "laundry_time": "Pyykin nollausaika",
+          "suggestion_time": "Uusi asu joka aamu klo",
+          "temperature_sensitivity": "Lämpötilaherkkyys",
+          "layering_threshold": "Kerrosta, kun korkean ja matalan lämpötilan erotus on vähintään (astetta)"
+        },
+        "data_description": {
+          "wears_per_wash": "Käyttökerrat pesujen välillä perusarvona. Villapaidat, housut ja takit saavat tästä monikerran; alusvaatteet ja sukat ovat aina 1. Voit ohittaa minkä tahansa tuotteen.",
+          "laundry_time": "Tähän aikaan pyykkipäivinä kaikki tuotteet merkitään jälleen puhtaiksi.",
+          "temperature_sensitivity": "Positiivinen, jos palelet herkästi (pukeo lämpimämmin), negatiivinen, jos sinulla on usein kuuma.",
+          "layering_threshold": "Suuret päivittäiset lämpötilanvaihtelyt aiheuttavat kerrospukeutumisen, jonka voit vähentää iltapäivällä."
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Valitse vähintään yksi pyykkipäivä."
+    },
+    "abort": {
+      "single_instance_allowed": "Vaatekaappiassistentti on jo määritetty."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Vaatekaappiassistentin asetukset",
+        "data": {
+          "weather_entity": "Sääentiteetti",
+          "wears_per_wash": "Kuinka likaisiksi vaatteesi tulevat?",
+          "laundry_days": "Pyykkipäivä(t)",
+          "laundry_every_weeks": "Pese pyykkiä joka N. viikko",
+          "laundry_time": "Pyykin nollausaika",
+          "suggestion_time": "Uusi asu joka aamu klo",
+          "temperature_sensitivity": "Lämpötilaherkkyys",
+          "layering_threshold": "Kerrosta, kun korkean ja matalan lämpötilan erotus on vähintään (astetta)"
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Valitse vähintään yksi pyykkipäivä."
+    }
+  },
+  "selector": {
+    "wears_per_wash": {
+      "options": {
+        "1": "1 - Likaisin: käytä kerran pesujen välillä",
+        "2": "2 - Keskitaso: käytä kahdesti pesujen välillä",
+        "3": "3 - Puhtain: käytä kolmesti pesujen välillä"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Maanantai",
+        "tue": "Tiistai",
+        "wed": "Keskiviikko",
+        "thu": "Torstai",
+        "fri": "Perjantai",
+        "sat": "Lauantai",
+        "sun": "Sunnuntai"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "outfit": { "name": "Asu" },
+      "clean_items": { "name": "Puhtaat vaatteet" }
+    },
+    "button": {
+      "randomize": { "name": "Arvo asu" },
+      "wear_outfit": { "name": "Käytä asua" },
+      "wash_closet": { "name": "Pese kaappi" }
+    }
+  },
+  "services": {
+    "randomize": {
+      "name": "Arvo asu",
+      "description": "Päivitä säätiedot ja valitse toinen asu tälle päivälle."
+    },
+    "wear_outfit": {
+      "name": "Käytä asua",
+      "description": "Merkitse tämän päivän asu (tai tietyt tuotteet) käytetyiksi: päivittää viimeksi käytetty -tiedon ja puhtauden.",
+      "fields": {
+        "item_ids": { "name": "Tuotetunnukset", "description": "Valinnainen luettelo tuotetunnuksista. Jätä tyhjäksi käyttääksesi päivän ehdotusta." }
+      }
+    },
+    "wash_closet": {
+      "name": "Pese kaappi",
+      "description": "Nollaa kaikkien tuotteiden tai vain lueteltujen tuotteiden puhtaus.",
+      "fields": {
+        "item_ids": { "name": "Tuotetunnukset", "description": "Valinnainen luettelo pestävistä tuotetunnuksista. Jätä tyhjäksi pestäksesi kaiken." }
+      }
+    },
+    "import_closet": {
+      "name": "Tuo vaatekaappi",
+      "description": "Tuo vaatekaapin tuotteet asetuskansiossasi olevasta JSON-tiedostosta tai sisäisestä datasta.",
+      "fields": {
+        "path": { "name": "Polku", "description": "Tiedostopolku suhteessa asetuskansioosi." },
+        "data": { "name": "Data", "description": "Luettelo tuotteista tai objekti, joka sisältää tuoteluettelon." },
+        "replace": { "name": "Korvaa", "description": "Poista nykyinen kaappi ensin yhdistämisen sijaan." }
+      }
+    },
+    "export_closet": {
+      "name": "Vie vaatekaappi",
+      "description": "Palauta vaatekaappi JSON-muodossa ja kirjoita se halutessasi tiedostoon.",
+      "fields": {
+        "path": { "name": "Polku", "description": "Valinnainen tiedostopolku suhteessa asetuskansioosi." }
+      }
+    },
+    "scan_images": {
+      "name": "Skannaa kuvakansio",
+      "description": "Luo luonnostuotteet kansiossa config/closet_assistant/images oleville kuville, joita mikään tuote ei vielä käytä."
+    }
+  }
+}

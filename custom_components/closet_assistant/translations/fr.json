@@ -1,0 +1,123 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer Closet Assistant",
+        "description": "Indiquez à Closet Assistant d'où proviennent vos données météo, à quelle vitesse vos vêtements se salissent et quand vous faites la من... (quand vous faites la l'lessive).",
+        "data": {
+          "weather_entity": "Entité météo",
+          "wears_per_wash": "À quel point vos vêtements se salissent-ils ?",
+          "laundry_days": "Jour(s) de the lessive",
+          "laundry_every_weeks": "Faire la lessive toutes les N semaines",
+          "laundry_time": "Heure de réinitialisation de la lessive",
+          "suggestion_time": "Nouvelle tenue chaque matin à",
+          "temperature_sensitivity": "Sensibilité à la température",
+          "layering_threshold": "Superposer les couches lorsque max moins min est d'au moins (degrés)"
+        },
+        "data_description": {
+          "wears_per_wash": "Port de base entre les lavages. Les pulls, pantalons et vestes reçoivent un multiple de ceci ; les sous-vêtements et les chaussettes sont toujours à 1. Vous pouvez remplacer n'importe quel article.",
+          "laundry_time": "À cette heure-ci les jours de lessive, chaque article est à nouveau marqué comme propre.",
+          "temperature_sensitivity": "Positif si vous êtes frileux (vous habille plus chaudement), négatif si vous avez chaud.",
+          "layering_threshold": "De grandes amplitudes thermiques quotidiennes entraînent une tenue superposée que vous pourrez alléger dans l'après-midi."
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Sélectionnez au moins un jour de lessive."
+    },
+    "abort": {
+      "single_instance_allowed": "Closet Assistant est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options de Closet Assistant",
+        "data": {
+          "weather_entity": "Entité météo",
+          "wears_per_wash": "À quel point vos vêtements se salissent-ils ?",
+          "laundry_days": "Jour(s) de lessive",
+          "laundry_every_weeks": "Faire la lessive toutes les N semaines",
+          "laundry_time": "Heure de réinitialisation de la lessive",
+          "suggestion_time": "Nouvelle tenue chaque matin à",
+          "temperature_sensitivity": "Sensibilité à la température",
+          "layering_threshold": "Superposer les couches lorsque max moins min est d'au moins (degrés)"
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Sélectionnez au moins un jour de lessive."
+    }
+  },
+  "selector": {
+    "wears_per_wash": {
+      "options": {
+        "1": "1 - Très sale : à porter une fois entre les lavages",
+        "2": "2 - Moyen : à porter deux fois entre les lavages",
+        "3": "3 - Propre : à porter trois fois entre les lavages"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Lundi",
+        "tue": "Mardi",
+        "wed": "Mercredi",
+        "thu": "Jeudi",
+        "fri": "Vendredi",
+        "sat": "Samedi",
+        "sun": "Dimanche"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "outfit": { "name": "Tenue" },
+      "clean_items": { "name": "Articles propres" }
+    },
+    "button": {
+      "randomize": { "name": "Tenue aléatoire" },
+      "wear_outfit": { "name": "Porter la tenue" },
+      "wash_closet": { "name": "Laver la garde-robe" }
+    }
+  },
+  "services": {
+    "randomize": {
+      "name": "Tenue aléatoire",
+      "description": "Actualise la météo et choisit une autre tenue pour aujourd'hui."
+    },
+    "wear_outfit": {
+      "name": "Porter la tenue",
+      "description": "Marque la tenue du jour (ou des articles spécifiques) comme portée : met à jour la dernière utilisation et la propreté.",
+      "fields": {
+        "item_ids": { "name": "ID d'articles", "description": "Liste optionnelle d'ID d'articles. Laissez vide pour porter la suggestion du jour." }
+      }
+    },
+    "wash_closet": {
+      "name": "Laver la garde-robe",
+      "description": "Réinitialise la propreté de chaque article, ou uniquement des articles listés.",
+      "fields": {
+        "item_ids": { "name": "ID d'articles", "description": "Liste optionnelle d'ID d'articles à laver. Laissez vide pour tout laver." }
+      }
+    },
+    "import_closet": {
+      "name": "Importer la garde-robe",
+      "description": "Importe les articles de la garde-robe à partir d'un fichier JSON dans votre dossier de configuration ou à partir de données intégrées.",
+      "fields": {
+        "path": { "name": "Chemin", "description": "Chemin du fichier relatif à votre dossier de configuration." },
+        "data": { "name": "Données", "description": "Une liste d'articles, ou un objet avec une liste d'articles." },
+        "replace": { "name": "Remplacer", "description": "Supprimer d'abord la garde-robe actuelle au lieu de fusionner." }
+      }
+    },
+    "export_closet": {
+      "name": "Exporter la garde-robe",
+      "description": "Renvoie la garde-robe au format JSON et l'écrit éventuellement dans un fichier.",
+      "fields": {
+        "path": { "name": "Chemin", "description": "Chemin de fichier optionnel relatif à votre dossier de configuration." }
+      }
+    },
+    "scan_images": {
+      "name": "Analyser le dossier d'images",
+      "description": "Crée des articles brouillons pour les images dans config/closet_assistant/images qu'aucun article n'utilise encore."
+    }
+  }
+}

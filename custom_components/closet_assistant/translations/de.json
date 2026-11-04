@@ -1,0 +1,123 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Closet Assistant einrichten",
+        "description": "Teile Closet Assistant mit, woher deine Wetterdaten kommen, wie schnell deine Kleidung schmutzig wird und wann du Wäsche wäschst.",
+        "data": {
+          "weather_entity": "Wetter-Entität",
+          "wears_per_wash": "Wie schnell wird deine Kleidung schmutzig?",
+          "laundry_days": "Waschtag(e)",
+          "laundry_every_weeks": "Wäsche waschen alle N Wochen",
+          "laundry_time": "Uhrzeit zum Zurücksetzen der Wäsche",
+          "suggestion_time": "Neues Outfit jeden Morgen um",
+          "temperature_sensitivity": "Temperaturempfindlichkeit",
+          "layering_threshold": "Lagenlook, wenn Hoch minus Tief mindestens beträgt (Grad)"
+        },
+        "data_description": {
+          "wears_per_wash": "Anzahl der Tragevorgänge zwischen den Wäschen als Basis. Pullover, Hosen und Jacken erhalten ein Vielfaches davon; Unterwäsche und Socken sind immer 1. Du kannst jeden Artikel überschreiben.",
+          "laundry_time": "Zu dieser Zeit an Waschtagen wird jeder Artikel wieder als sauber markiert.",
+          "temperature_sensitivity": "Positiv, wenn du leicht frierst (kleidet dich wärmer), negativ, wenn dir schnell warm ist.",
+          "layering_threshold": "Große tägliche Temperaturschwankungen führen zu einem Lagenlook, den du am Nachmittag ablegen kannst."
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Wähle mindestens einen Waschtag aus."
+    },
+    "abort": {
+      "single_instance_allowed": "Closet Assistant ist bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Closet Assistant Optionen",
+        "data": {
+          "weather_entity": "Wetter-Entität",
+          "wears_per_wash": "Wie schnell wird deine Kleidung schmutzig?",
+          "laundry_days": "Waschtag(e)",
+          "laundry_every_weeks": "Wäsche waschen alle N Wochen",
+          "laundry_time": "Uhrzeit zum Zurücksetzen der Wäsche",
+          "suggestion_time": "Neues Outfit jeden Morgen um",
+          "temperature_sensitivity": "Temperaturempfindlichkeit",
+          "layering_threshold": "Lagenlook, wenn Hoch minus Tief mindestens beträgt (Grad)"
+        }
+      }
+    },
+    "error": {
+      "no_laundry_day": "Wähle mindestens einen Waschtag aus."
+    }
+  },
+  "selector": {
+    "wears_per_wash": {
+      "options": {
+        "1": "1 - Sehr schmutzig: einmal zwischen den Wäschen tragen",
+        "2": "2 - Durchschnittlich: zweimal zwischen den Wäschen tragen",
+        "3": "3 - Am saubersten: dreimal zwischen den Wäschen tragen"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Montag",
+        "tue": "Dienstag",
+        "wed": "Mittwoch",
+        "thu": "Donnerstag",
+        "fri": "Freitag",
+        "sat": "Samstag",
+        "sun": "Sonntag"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "outfit": { "name": "Outfit" },
+      "clean_items": { "name": "Saubere Kleidungsstücke" }
+    },
+    "button": {
+      "randomize": { "name": "Outfit zufällig generieren" },
+      "wear_outfit": { "name": "Outfit tragen" },
+      "wash_closet": { "name": "Kleiderschrank waschen" }
+    }
+  },
+  "services": {
+    "randomize": {
+      "name": "Outfit zufällig generieren",
+      "description": "Aktualisiert das Wetter und wählt ein anderes Outfit für heute aus."
+    },
+    "wear_outfit": {
+      "name": "Outfit tragen",
+      "description": "Markiert das heutige Outfit (oder bestimmte Artikel) als getragen: aktualisiert das letzte Tragedatum und die Sauberkeit.",
+      "fields": {
+        "item_ids": { "name": "Artikel-IDs", "description": "Optionale Liste von Artikel-IDs. Leer lassen, um den heutigen Vorschlag zu tragen." }
+      }
+    },
+    "wash_closet": {
+      "name": "Kleiderschrank waschen",
+      "description": "Setzt die Sauberkeit für jeden Artikel oder nur für die aufgelisteten Artikel zurück.",
+      "fields": {
+        "item_ids": { "name": "Artikel-IDs", "description": "Optionale Liste von Artikel-IDs zum Waschen. Leer lassen, um alles zu waschen." }
+      }
+    },
+    "import_closet": {
+      "name": "Garderobe importieren",
+      "description": "Importiert Garderobenartikel aus einer JSON-Datei in deinem Konfigurationsordner oder aus Inline-Daten.",
+      "fields": {
+        "path": { "name": "Pfad", "description": "Dateipfad relativ zu deinem Konfigurationsordner." },
+        "data": { "name": "Daten", "description": "Eine Liste von Artikeln oder ein Objekt mit einer Artikelliste." },
+        "replace": { "name": "Ersetzen", "description": "Löscht zuerst die aktuelle Garderobe anstatt sie zusammenzuführen." }
+      }
+    },
+    "export_closet": {
+      "name": "Garderobe exportieren",
+      "description": "Gibt die Garderobe als JSON zurück und schreibt sie optional in eine Datei.",
+      "fields": {
+        "path": { "name": "Pfad", "description": "Optionaler Dateipfad relativ zu deinem Konfigurationsordner." }
+      }
+    },
+    "scan_images": {
+      "name": "Bilderordner scannen",
+      "description": "Erstellt Entwurfsartikel für Bilder in config/closet_assistant/images, die noch von keinem Artikel verwendet werden."
+    }
+  }
+}
