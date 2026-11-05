@@ -12,13 +12,15 @@
           "laundry_time": "Heure de réinitialisation de la lessive",
           "suggestion_time": "Nouvelle tenue chaque matin à",
           "temperature_sensitivity": "Sensibilité à la température",
-          "layering_threshold": "Superposer les couches lorsque max moins min est d'au moins (degrés)"
+          "layering_threshold": "Superposer les couches lorsque max moins min est d'au moins (degrés)",
+          "declutter_days": "Suggérer de se séparer après (jours sans porter)"
         },
         "data_description": {
           "wears_per_wash": "Port de base entre les lavages. Les pulls, pantalons et vestes reçoivent un multiple de ceci ; les sous-vêtements et les chaussettes sont toujours à 1. Vous pouvez remplacer n'importe quel article.",
           "laundry_time": "À cette heure-ci les jours de lessive, chaque article est à nouveau marqué comme propre.",
           "temperature_sensitivity": "Positif si vous êtes frileux (vous habille plus chaudement), négatif si vous avez chaud.",
-          "layering_threshold": "De grandes amplitudes thermiques quotidiennes entraînent une tenue superposée que vous pourrez alléger dans l'après-midi."
+          "layering_threshold": "De grandes amplitudes thermiques quotidiennes entraînent une tenue superposée que vous pourrez alléger dans l'après-midi.",
+          "declutter_days": "Les vêtements non portés depuis ce nombre de jours apparaissent dans « Pas porté récemment ». Les manteaux, shorts et autres pièces de saison ont toujours au moins un an. 0 désactive la fonction."
         }
       }
     },
@@ -41,7 +43,11 @@
           "laundry_time": "Heure de réinitialisation de la lessive",
           "suggestion_time": "Nouvelle tenue chaque matin à",
           "temperature_sensitivity": "Sensibilité à la température",
-          "layering_threshold": "Superposer les couches lorsque max moins min est d'au moins (degrés)"
+          "layering_threshold": "Superposer les couches lorsque max moins min est d'au moins (degrés)",
+          "declutter_days": "Suggérer de se séparer après (jours sans porter)"
+        },
+        "data_description": {
+          "declutter_days": "Les vêtements non portés depuis ce nombre de jours apparaissent dans « Pas porté récemment ». Les manteaux, shorts et autres pièces de saison ont toujours au moins un an. 0 désactive la fonction."
         }
       }
     },
@@ -71,13 +77,26 @@
   },
   "entity": {
     "sensor": {
-      "outfit": { "name": "Tenue" },
-      "clean_items": { "name": "Articles propres" }
+      "outfit": {
+        "name": "Tenue"
+      },
+      "clean_items": {
+        "name": "Articles propres"
+      },
+      "unworn_items": {
+        "name": "Vêtements non portés"
+      }
     },
     "button": {
-      "randomize": { "name": "Tenue aléatoire" },
-      "wear_outfit": { "name": "Porter la tenue" },
-      "wash_closet": { "name": "Laver la garde-robe" }
+      "randomize": {
+        "name": "Tenue aléatoire"
+      },
+      "wear_outfit": {
+        "name": "Porter la tenue"
+      },
+      "wash_closet": {
+        "name": "Laver la garde-robe"
+      }
     }
   },
   "services": {
@@ -89,30 +108,48 @@
       "name": "Porter la tenue",
       "description": "Marque la tenue du jour (ou des articles spécifiques) comme portée : met à jour la dernière utilisation et la propreté.",
       "fields": {
-        "item_ids": { "name": "ID d'articles", "description": "Liste optionnelle d'ID d'articles. Laissez vide pour porter la suggestion du jour." }
+        "item_ids": {
+          "name": "ID d'articles",
+          "description": "Liste optionnelle d'ID d'articles. Laissez vide pour porter la suggestion du jour."
+        }
       }
     },
     "wash_closet": {
       "name": "Laver la garde-robe",
       "description": "Réinitialise la propreté de chaque article, ou uniquement des articles listés.",
       "fields": {
-        "item_ids": { "name": "ID d'articles", "description": "Liste optionnelle d'ID d'articles à laver. Laissez vide pour tout laver." }
+        "item_ids": {
+          "name": "ID d'articles",
+          "description": "Liste optionnelle d'ID d'articles à laver. Laissez vide pour tout laver."
+        }
       }
     },
     "import_closet": {
       "name": "Importer la garde-robe",
       "description": "Importe les articles de la garde-robe à partir d'un fichier JSON dans votre dossier de configuration ou à partir de données intégrées.",
       "fields": {
-        "path": { "name": "Chemin", "description": "Chemin du fichier relatif à votre dossier de configuration." },
-        "data": { "name": "Données", "description": "Une liste d'articles, ou un objet avec une liste d'articles." },
-        "replace": { "name": "Remplacer", "description": "Supprimer d'abord la garde-robe actuelle au lieu de fusionner." }
+        "path": {
+          "name": "Chemin",
+          "description": "Chemin du fichier relatif à votre dossier de configuration."
+        },
+        "data": {
+          "name": "Données",
+          "description": "Une liste d'articles, ou un objet avec une liste d'articles."
+        },
+        "replace": {
+          "name": "Remplacer",
+          "description": "Supprimer d'abord la garde-robe actuelle au lieu de fusionner."
+        }
       }
     },
     "export_closet": {
       "name": "Exporter la garde-robe",
       "description": "Renvoie la garde-robe au format JSON et l'écrit éventuellement dans un fichier.",
       "fields": {
-        "path": { "name": "Chemin", "description": "Chemin de fichier optionnel relatif à votre dossier de configuration." }
+        "path": {
+          "name": "Chemin",
+          "description": "Chemin de fichier optionnel relatif à votre dossier de configuration."
+        }
       }
     },
     "scan_images": {

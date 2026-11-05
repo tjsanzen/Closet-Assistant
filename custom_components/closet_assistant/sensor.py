@@ -26,7 +26,7 @@ def device_info(entry: ConfigEntry) -> DeviceInfo:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     manager: ClosetManager = entry.runtime_data
-    async_add_entities([OutfitSensor(manager, entry), ClosetSensor(manager, entry)])
+    async_add_entities([OutfitSensor(manager, entry), ClosetSensor(manager, entry), UnwornSensor(manager, entry)])
 
 
 class _Base(SensorEntity):
@@ -101,4 +101,35 @@ class ClosetSensor(_Base):
             "in_hamper": counts["dirty"],
             "last_wash": self.manager.last_wash,
             "next_laundry": self.manager.next_laundry_day(),
+        }
+
+
+class UnwornSensor(_Base):
+    """Items you haven't worn in a long time - handy for a monthly declutter reminder."""
+
+    _attr_translation_key = "unworn_items"
+    _attr_icon = "mdi:hanger-off"
+    _attr_native_unit_of_measurement = "items"
+    _unrecorded_attributes = frozenset({"items"})
+
+    def __init__(self, manager: ClosetManager, entry: ConfigEntry) -> None:
+        super().__init__(manager, entry)
+        self._attr_unique_id = f"{entry.entry_id}_unworn_items"
+
+    @property
+    def native_value(self) -> int:
+        return len(self.manager.declutter_items())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        items = sorted(
+            ({**i, **self.manager.unworn_info(i)} for i in self.manager.declutter_items()),
+            key=lambda i: -i["unworn_days"],
+        )
+        return {
+            "threshold_days": self.manager.settings["declutter_days"],
+            "items": [
+                {"id": i["id"], "name": i["name"], "unworn_days": i["unworn_days"], "never_worn": i["never_worn"]}
+                for i in items
+            ],
         }

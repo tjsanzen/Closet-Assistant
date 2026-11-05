@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "closet_assistant"
 NAME = "Closet Assistant"
-VERSION = "0.3.1"
+VERSION = "0.4.0"
 
 STORAGE_KEY = f"{DOMAIN}.closet"
 STORAGE_VERSION = 1
@@ -28,6 +28,7 @@ CONF_LAUNDRY_TIME = "laundry_time"
 CONF_SUGGESTION_TIME = "suggestion_time"
 CONF_TEMP_SENSITIVITY = "temperature_sensitivity"
 CONF_LAYER_THRESHOLD = "layering_threshold"
+CONF_DECLUTTER_DAYS = "declutter_days"
 
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
@@ -39,6 +40,11 @@ DEFAULTS = {
     CONF_SUGGESTION_TIME: "05:00:00",
     CONF_TEMP_SENSITIVITY: 0,
     CONF_LAYER_THRESHOLD: 15,
+    CONF_DECLUTTER_DAYS: 180,
 }
 
 HISTORY_DAYS = 60
+
+# Seasonal pieces (coats, shorts, very warm or very light items) sit unused for
+# half the year by design, so they get at least this long before being flagged.
+SEASONAL_MIN_DAYS = 365

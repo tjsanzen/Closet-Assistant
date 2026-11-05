@@ -4,7 +4,7 @@
  *   custom:closet-assistant-closet-card  - "Manage Closet"
  * Served and auto-loaded by the closet_assistant integration. No build step.
  */
-const CA_VERSION = "0.3.1";
+const CA_VERSION = "0.4.0";
 const DOMAIN = "closet_assistant";
 
 /* ------------------------------------------------------------------ shared store */
@@ -69,6 +69,17 @@ function daysAgo(iso) {
   if (d <= 0) return "worn today";
   if (d === 1) return "worn yesterday";
   return `worn ${d}d ago`;
+}
+
+function spanText(days) {
+  if (days < 45) return `${days} days`;
+  const months = Math.round(days / 30.44);
+  if (months < 24) return `${months} months`;
+  return `${Math.floor(months / 12)} years`;
+}
+
+function unwornText(item) {
+  return item.never_worn ? `Never worn · added ${spanText(item.unworn_days)} ago` : `Not worn in ${spanText(item.unworn_days)}`;
 }
 
 function weekdayName(iso) {
@@ -568,6 +579,9 @@ class ClosetAssistantClosetCard extends HTMLElement {
     const counts = {};
     for (const it of d.items) counts[it.category] = (counts[it.category] || 0) + 1;
     const q = this._search.trim().toLowerCase();
+    const reviewing = this._filter === "unworn";
+    const unworn = d.items.filter((i) => i.declutter).sort((a, b) => b.unworn_days - a.unworn_days);
+    if (reviewing && !unworn.length) this._filter = "all";
     const items = d.items
       .filter((i) => this._filter === "all" || i.category === this._filter)
       .filter((i) => !this._dirtyOnly || !i.clean)
@@ -598,17 +612,41 @@ class ClosetAssistantClosetCard extends HTMLElement {
         <input class="search" type="search" placeholder="Search name, colour, fabric..." value="${esc(this._search)}" data-ui="search">
         <label class="toggle"><input type="checkbox" data-ui="dirty" ${this._dirtyOnly ? "checked" : ""}> In hamper only</label>
       </div>
+      ${unworn.length && !reviewing && !this._hideNudge
+        ? `<div class="nudge">
+            <ha-icon icon="mdi:hanger-off"></ha-icon>
+            <div class="nudge-text"><b>${unworn.length} ${unworn.length === 1 ? "item hasn't" : "items haven't"} been worn in ${spanText(d.settings.declutter_days)}+.</b>
+              <span class="muted">Time to let some go? Donating what you don't wear makes the rest easier to choose from.</span></div>
+            <button class="small primary" data-action="filter" data-cat="unworn">Review</button>
+            <button class="small icon-only" data-action="hide-nudge" title="Not now"><ha-icon icon="mdi:close"></ha-icon></button>
+          </div>`
+        : ""}
       <div class="chips">
         <button class="chip ${this._filter === "all" ? "sel" : ""}" data-action="filter" data-cat="all">All ${d.items.length}</button>
+        ${unworn.length ? `<button class="chip unworn-chip ${reviewing ? "sel" : ""}" data-action="filter" data-cat="unworn"><ha-icon icon="mdi:hanger-off"></ha-icon>Unworn ${unworn.length}</button>` : ""}
         ${Object.entries(cats).filter(([k]) => counts[k]).map(([k, m]) =>
           `<button class="chip ${this._filter === k ? "sel" : ""}" data-action="filter" data-cat="${k}">${esc(m.label.split(" (")[0])} ${counts[k]}</button>`).join("")}
       </div>
       ${this._toast ? `<div class="toast">${esc(this._toast)}</div>` : ""}
-      ${items.length
+      ${reviewing
+        ? `<div class="review">
+            <div class="review-intro muted">Not worn in ${spanText(d.settings.declutter_days)} or more${d.settings.declutter_days < 365 ? " (seasonal pieces like coats and shorts get a full year)" : ""}. <b>Keep</b> hides an item for another ${spanText(d.settings.declutter_days || 180)}; <b>Let go</b> removes it from your closet.</div>
+            ${unworn.map((i) => `
+              <div class="review-row">
+                <div class="thumb" data-action="edit" data-id="${esc(i.id)}">${itemVisual(i, cats)}</div>
+                <div class="review-info" data-action="edit" data-id="${esc(i.id)}">
+                  <div class="name">${esc(i.name)}</div>
+                  <div class="muted small-text">${esc(unwornText(i))}${i.times_worn ? ` · worn ${i.times_worn}× total` : ""}${i.seasonal ? " · seasonal" : ""}</div>
+                </div>
+                <button class="small" data-action="keep" data-id="${esc(i.id)}"><ha-icon icon="mdi:heart-outline"></ha-icon>Keep</button>
+                <button class="small danger" data-action="let-go" data-id="${esc(i.id)}"><ha-icon icon="mdi:hand-heart-outline"></ha-icon>Let go</button>
+              </div>`).join("")}
+          </div>`
+        : items.length
         ? `<div class="grid">${items.map((i) => `
             <div class="item ${i.clean ? "" : "dirty"}" data-action="edit" data-id="${esc(i.id)}">
               ${itemVisual(i, cats)}
-              ${i.needs_review ? `<span class="flag">review</span>` : !i.clean ? `<span class="flag hamper">hamper</span>` : ""}
+              ${i.needs_review ? `<span class="flag">review</span>` : !i.clean ? `<span class="flag hamper">hamper</span>` : i.declutter ? `<span class="flag unworn" title="${esc(unwornText(i))}">unworn</span>` : ""}
               <div class="name">${esc(i.name)}</div>
               <div class="sub muted">${pips(i)}<span>${esc(daysAgo(i.last_worn))}</span></div>
             </div>`).join("")}</div>`
@@ -699,12 +737,14 @@ class ClosetAssistantClosetCard extends HTMLElement {
           ${dr.id ? `<div class="clean-row muted">${pips(dr)} ${dr.cleanliness ?? "-"} of ${dr.max_wears_effective ?? defMax} wears left</div>` : ""}`
           : `<label>Last worn<input type="date" data-field="last_worn" value="${esc(dr.last_worn || "")}"></label>`}
           <label>Notes<input data-field="notes" value="${esc(dr.notes || "")}" placeholder="Optional"></label>
+          ${dr.id ? `<div class="history muted">${dr.declutter ? `<ha-icon icon="mdi:hanger-off"></ha-icon>` : ""}${esc(unwornText(dr))} · worn ${dr.times_worn || 0}× total${dr.added ? ` · added ${esc(weekdayName(dr.added))}` : ""}</div>` : ""}
         </div>
       </div>
       <div class="dlg-actions">
         ${dr.id ? `<button class="danger" data-action="delete"><ha-icon icon="mdi:delete-outline"></ha-icon>Delete</button>` : ""}
         ${dr.id && dr.tracks_cleanliness ? `<button data-action="wash-one"><ha-icon icon="mdi:washing-machine"></ha-icon>Mark clean</button>` : ""}
         ${dr.id ? `<button data-action="wear-one"><ha-icon icon="mdi:hanger"></ha-icon>Wore it today</button>` : ""}
+        ${dr.id && dr.declutter ? `<button data-action="keep" data-id="${esc(dr.id)}"><ha-icon icon="mdi:heart-outline"></ha-icon>Keep</button>` : ""}
         <span style="flex:1"></span>
         <button data-action="close">Cancel</button>
         <button class="primary" data-action="save" ${this._busy || this._uploading ? "disabled" : ""}>Save</button>
@@ -780,6 +820,27 @@ class ClosetAssistantClosetCard extends HTMLElement {
       case "filter":
         this._filter = el.dataset.cat;
         return this._renderMain();
+      case "hide-nudge":
+        this._hideNudge = true;
+        return this._renderMain();
+      case "keep": {
+        const item = d.items.find((i) => i.id === el.dataset.id);
+        return this._run(async () => {
+          await ws(this._hass, "keep", { item_ids: [el.dataset.id] });
+          if (this._draft) { this._draft = null; this._renderModal(); }
+        }, item ? `Keeping ${item.name}. Wear it soon!` : "Kept.");
+      }
+      case "let-go": {
+        const item = d.items.find((i) => i.id === el.dataset.id);
+        if (!item) return;
+        return this._ask("Let it go?", `Remove "${item.name}" from your closet? ${unwornText(item)}. This also deletes its photo.`, [
+          { label: "Let go", cls: "danger", run: async () => {
+            await ws(this._hass, "item/delete", { item_id: item.id });
+            if (this._draft) { this._draft = null; this._renderModal(); }
+            this._toast = `Removed ${item.name}.`;
+          } },
+        ]);
+      }
       case "add":
         this._draft = this._newDraft();
         return this._renderModal();
@@ -992,6 +1053,30 @@ const CLOSET_CSS = `
   .rating .ends { display:flex; justify-content:space-between; font-size:.7em; }
   .clean-row { font-size:.82em; display:flex; gap:8px; align-items:center; }
   .dlg-actions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; align-items:center; }
+
+  .nudge { display:flex; align-items:center; gap:10px; margin:12px 0 4px; padding:10px 12px; border-radius:14px;
+    background:color-mix(in srgb, var(--warning-color, #ffa600) 13%, transparent); }
+  .nudge > ha-icon { color:var(--warning-color, #ffa600); flex:none; }
+  .nudge-text { flex:1; display:flex; flex-direction:column; gap:2px; font-size:13px; min-width:0; }
+  .icon-only { padding:6px; }
+  .unworn-chip { display:inline-flex; align-items:center; gap:4px; }
+  .unworn-chip ha-icon { --mdc-icon-size:15px; }
+  .flag.unworn { background:var(--warning-color, #ffa600); }
+  .review { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .review-intro { font-size:13px; margin-bottom:4px; }
+  .review-row { display:flex; align-items:center; gap:12px; padding:8px; border-radius:14px; border:1px solid var(--divider-color); }
+  .review-row .thumb { width:64px; flex:none; cursor:pointer; }
+  .review-info { flex:1; min-width:0; cursor:pointer; }
+  .review-info .name { font-size:14px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .small-text { font-size:12px; }
+  .history { font-size:12px; display:flex; align-items:center; gap:4px; }
+  .history ha-icon { --mdc-icon-size:15px; color:var(--warning-color, #ffa600); }
+  @container (max-width: 420px) {
+    .review-row { flex-wrap:wrap; }
+    .review-info { flex-basis:calc(100% - 80px); }
+    .review-row button { flex:1; justify-content:center; }
+    .nudge { flex-wrap:wrap; }
+  }
 
   /* ---- Responsive scaling ---- */
   #main { container-type:inline-size; }

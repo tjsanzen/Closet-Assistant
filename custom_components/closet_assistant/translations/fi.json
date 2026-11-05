@@ -12,13 +12,15 @@
           "laundry_time": "Pyykin nollausaika",
           "suggestion_time": "Uusi asu joka aamu klo",
           "temperature_sensitivity": "Lämpötilaherkkyys",
-          "layering_threshold": "Kerrosta, kun korkean ja matalan lämpötilan erotus on vähintään (astetta)"
+          "layering_threshold": "Kerrosta, kun korkean ja matalan lämpötilan erotus on vähintään (astetta)",
+          "declutter_days": "Ehdota luopumista (päivää käyttämättä)"
         },
         "data_description": {
           "wears_per_wash": "Käyttökerrat pesujen välillä perusarvona. Villapaidat, housut ja takit saavat tästä monikerran; alusvaatteet ja sukat ovat aina 1. Voit ohittaa minkä tahansa tuotteen.",
           "laundry_time": "Tähän aikaan pyykkipäivinä kaikki tuotteet merkitään jälleen puhtaiksi.",
           "temperature_sensitivity": "Positiivinen, jos palelet herkästi (pukeo lämpimämmin), negatiivinen, jos sinulla on usein kuuma.",
-          "layering_threshold": "Suuret päivittäiset lämpötilanvaihtelyt aiheuttavat kerrospukeutumisen, jonka voit vähentää iltapäivällä."
+          "layering_threshold": "Suuret päivittäiset lämpötilanvaihtelyt aiheuttavat kerrospukeutumisen, jonka voit vähentää iltapäivällä.",
+          "declutter_days": "Vaatteet, joita ei ole käytetty näin moneen päivään, näkyvät kohdassa ”Ei käytetty aikoihin”. Takit, shortsit ja muut kausivaatteet saavat aina vähintään vuoden. 0 poistaa toiminnon käytöstä."
         }
       }
     },
@@ -41,7 +43,11 @@
           "laundry_time": "Pyykin nollausaika",
           "suggestion_time": "Uusi asu joka aamu klo",
           "temperature_sensitivity": "Lämpötilaherkkyys",
-          "layering_threshold": "Kerrosta, kun korkean ja matalan lämpötilan erotus on vähintään (astetta)"
+          "layering_threshold": "Kerrosta, kun korkean ja matalan lämpötilan erotus on vähintään (astetta)",
+          "declutter_days": "Ehdota luopumista (päivää käyttämättä)"
+        },
+        "data_description": {
+          "declutter_days": "Vaatteet, joita ei ole käytetty näin moneen päivään, näkyvät kohdassa ”Ei käytetty aikoihin”. Takit, shortsit ja muut kausivaatteet saavat aina vähintään vuoden. 0 poistaa toiminnon käytöstä."
         }
       }
     },
@@ -71,13 +77,26 @@
   },
   "entity": {
     "sensor": {
-      "outfit": { "name": "Asu" },
-      "clean_items": { "name": "Puhtaat vaatteet" }
+      "outfit": {
+        "name": "Asu"
+      },
+      "clean_items": {
+        "name": "Puhtaat vaatteet"
+      },
+      "unworn_items": {
+        "name": "Käyttämättömät vaatteet"
+      }
     },
     "button": {
-      "randomize": { "name": "Arvo asu" },
-      "wear_outfit": { "name": "Käytä asua" },
-      "wash_closet": { "name": "Pese kaappi" }
+      "randomize": {
+        "name": "Arvo asu"
+      },
+      "wear_outfit": {
+        "name": "Käytä asua"
+      },
+      "wash_closet": {
+        "name": "Pese kaappi"
+      }
     }
   },
   "services": {
@@ -89,30 +108,48 @@
       "name": "Käytä asua",
       "description": "Merkitse tämän päivän asu (tai tietyt tuotteet) käytetyiksi: päivittää viimeksi käytetty -tiedon ja puhtauden.",
       "fields": {
-        "item_ids": { "name": "Tuotetunnukset", "description": "Valinnainen luettelo tuotetunnuksista. Jätä tyhjäksi käyttääksesi päivän ehdotusta." }
+        "item_ids": {
+          "name": "Tuotetunnukset",
+          "description": "Valinnainen luettelo tuotetunnuksista. Jätä tyhjäksi käyttääksesi päivän ehdotusta."
+        }
       }
     },
     "wash_closet": {
       "name": "Pese kaappi",
       "description": "Nollaa kaikkien tuotteiden tai vain lueteltujen tuotteiden puhtaus.",
       "fields": {
-        "item_ids": { "name": "Tuotetunnukset", "description": "Valinnainen luettelo pestävistä tuotetunnuksista. Jätä tyhjäksi pestäksesi kaiken." }
+        "item_ids": {
+          "name": "Tuotetunnukset",
+          "description": "Valinnainen luettelo pestävistä tuotetunnuksista. Jätä tyhjäksi pestäksesi kaiken."
+        }
       }
     },
     "import_closet": {
       "name": "Tuo vaatekaappi",
       "description": "Tuo vaatekaapin tuotteet asetuskansiossasi olevasta JSON-tiedostosta tai sisäisestä datasta.",
       "fields": {
-        "path": { "name": "Polku", "description": "Tiedostopolku suhteessa asetuskansioosi." },
-        "data": { "name": "Data", "description": "Luettelo tuotteista tai objekti, joka sisältää tuoteluettelon." },
-        "replace": { "name": "Korvaa", "description": "Poista nykyinen kaappi ensin yhdistämisen sijaan." }
+        "path": {
+          "name": "Polku",
+          "description": "Tiedostopolku suhteessa asetuskansioosi."
+        },
+        "data": {
+          "name": "Data",
+          "description": "Luettelo tuotteista tai objekti, joka sisältää tuoteluettelon."
+        },
+        "replace": {
+          "name": "Korvaa",
+          "description": "Poista nykyinen kaappi ensin yhdistämisen sijaan."
+        }
       }
     },
     "export_closet": {
       "name": "Vie vaatekaappi",
       "description": "Palauta vaatekaappi JSON-muodossa ja kirjoita se halutessasi tiedostoon.",
       "fields": {
-        "path": { "name": "Polku", "description": "Valinnainen tiedostopolku suhteessa asetuskansioosi." }
+        "path": {
+          "name": "Polku",
+          "description": "Valinnainen tiedostopolku suhteessa asetuskansioosi."
+        }
       }
     },
     "scan_images": {

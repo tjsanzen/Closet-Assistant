@@ -186,6 +186,8 @@ def normalize_item(raw: dict[str, Any], base_wears: int = 2) -> dict[str, Any]:
         "image": str(data["image"]).strip() if data.get("image") else None,
         "max_wears": max_wears,
         "last_worn": _parse_date(data.get("last_worn")),
+        "added": _parse_date(data.get("added")),
+        "keep_until": _parse_date(data.get("keep_until")),
         "times_worn": _clamp_int(data.get("times_worn", 0), 0, 100000, 0),
         "notes": str(data.get("notes") or "")[:500],
         "needs_review": bool(data.get("needs_review", False)),
@@ -220,6 +222,13 @@ def wears_remaining(item: dict[str, Any], base_wears: int) -> int:
     if not tracks_cleanliness(item):
         return 99
     return max(0, effective_max_wears(item, base_wears) - int(item.get("wears_since_wash", 0)))
+
+
+def is_seasonal(item: dict[str, Any]) -> bool:
+    """Pieces you'd only expect to wear for part of the year."""
+    return item["category"] in ("coat", "shorts") or item["warmth"] >= 7 or (
+        item["category"] in ("short_sleeve_shirt", "skirt") and item["warmth"] <= 1
+    )
 
 
 def is_clean(item: dict[str, Any], base_wears: int) -> bool:

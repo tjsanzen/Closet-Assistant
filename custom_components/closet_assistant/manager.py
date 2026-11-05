@@ -24,6 +24,7 @@ from .const import (
     CONF_LAUNDRY_DAYS,
     CONF_LAUNDRY_TIME,
     CONF_LAUNDRY_WEEKS,
+    CONF_DECLUTTER_DAYS,
     CONF_LAYER_THRESHOLD,
     CONF_SUGGESTION_TIME,
     CONF_TEMP_SENSITIVITY,
@@ -35,6 +36,7 @@ from .const import (
     IMAGES_SUBDIR,
     IMAGES_URL,
     MAX_IMAGE_BYTES,
+    SEASONAL_MIN_DAYS,
     STORAGE_KEY,
     STORAGE_VERSION,
     VERSION,
@@ -49,6 +51,7 @@ from .models import (
     PATTERNS,
     effective_max_wears,
     guess_category_from_filename,
+    is_seasonal,
     normalize_item,
     tracks_cleanliness,
     wears_remaining,
@@ -95,6 +98,7 @@ class ClosetManager:
             "laundry_time": merged[CONF_LAUNDRY_TIME],
             "suggestion_time": merged[CONF_SUGGESTION_TIME],
             "temperature_sensitivity": float(merged[CONF_TEMP_SENSITIVITY]),
+            "declutter_days": int(merged.get(CONF_DECLUTTER_DAYS, 180)),
             "layering_threshold": threshold,
             "layering_threshold_f": threshold * 1.8 if unit == "°C" else threshold,
             "unit": unit,
@@ -113,8 +117,10 @@ class ClosetManager:
         await self.hass.async_add_executor_job(self.images_dir.mkdir, 0o755, True, True)
         data = await self._store.async_load() or {}
         base = self.base_wears
+        today_iso = dt_util.now().date().isoformat()
         for raw in data.get("items", []):
             item = normalize_item(raw, base)
+            item["added"] = item["added"] or today_iso  # older items start counting from now
             self.items[item["id"]] = item
         self.today = data.get("today")
         self.weather = data.get("weather")
@@ -312,6 +318,7 @@ class ClosetManager:
         if existing and "needs_review" not in raw:
             merged["needs_review"] = False
         item = normalize_item(merged, self.base_wears)
+        item["added"] = item["added"] or dt_util.now().date().isoformat()
         old_image = existing.get("image") if existing else None
         self.items[item["id"]] = item
         if old_image and old_image != item.get("image"):
@@ -342,6 +349,7 @@ class ClosetManager:
             if not isinstance(raw, dict):
                 continue
             item = normalize_item(raw, self.base_wears)
+            item["added"] = item["added"] or dt_util.now().date().isoformat()
             self.items[item["id"]] = item
             count += 1
         await self._commit()
@@ -427,11 +435,44 @@ class ClosetManager:
                 },
                 self.base_wears,
             )
+            item["added"] = dt_util.now().date().isoformat()
             self.items[item["id"]] = item
             added += 1
         if added:
             await self._commit()
         return added
+
+    # ------------------------------------------------------------------ declutter
+    def unworn_info(self, item: dict[str, Any]) -> dict[str, Any]:
+        """How long since this item was worn, and whether to suggest letting it go."""
+        today = dt_util.now().date()
+        ref = item.get("last_worn") or item.get("added")
+        try:
+            days = (today - date.fromisoformat(ref)).days if ref else 0
+        except ValueError:
+            days = 0
+        limit = self.settings["declutter_days"]
+        seasonal = is_seasonal(item)
+        threshold = max(limit, SEASONAL_MIN_DAYS) if seasonal else limit
+        kept = bool(item.get("keep_until") and item["keep_until"] > today.isoformat())
+        return {
+            "unworn_days": days,
+            "never_worn": not item.get("last_worn"),
+            "seasonal": seasonal,
+            "declutter": bool(limit) and days >= threshold and not kept,
+        }
+
+    def declutter_items(self) -> list[dict[str, Any]]:
+        return [i for i in self.items.values() if self.unworn_info(i)["declutter"]]
+
+    async def async_keep(self, item_ids: list[str], days: int | None = None) -> None:
+        """'Keep it': hide from the declutter list for another window."""
+        span = days or self.settings["declutter_days"] or 180
+        until = (dt_util.now().date() + timedelta(days=span)).isoformat()
+        for item_id in item_ids:
+            if item_id in self.items:
+                self.items[item_id]["keep_until"] = until
+        await self._commit()
 
     # ------------------------------------------------------------------ views
     def item_view(self, item: dict[str, Any]) -> dict[str, Any]:
@@ -447,6 +488,7 @@ class ClosetManager:
             "max_wears_effective": mx if tracks else None,
             "cleanliness": wears_remaining(item, base) if tracks else None,
             "clean": wears_remaining(item, base) > 0,
+            **self.unworn_info(item),
         }
 
     def today_view(self) -> dict[str, Any] | None:
@@ -462,7 +504,12 @@ class ClosetManager:
     def counts(self) -> dict[str, Any]:
         tracked = [i for i in self.items.values() if tracks_cleanliness(i)]
         dirty = [i for i in tracked if wears_remaining(i, self.base_wears) == 0]
-        return {"total": len(self.items), "dirty": len(dirty), "clean": len(self.items) - len(dirty)}
+        return {
+            "total": len(self.items),
+            "dirty": len(dirty),
+            "clean": len(self.items) - len(dirty),
+            "declutter": len(self.declutter_items()),
+        }
 
     def snapshot(self) -> dict[str, Any]:
         s = self.settings
@@ -478,6 +525,7 @@ class ClosetManager:
                 "laundry_days": s["laundry_days"],
                 "laundry_every_weeks": s["laundry_every_weeks"],
                 "weather_entity": s["weather_entity"],
+                "declutter_days": s["declutter_days"],
             },
             "last_wash": self.last_wash,
             "next_laundry": self.next_laundry_day(),

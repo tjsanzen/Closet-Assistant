@@ -31,6 +31,7 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_import,
         ws_export,
         ws_scan_images,
+        ws_keep,
     ):
         websocket_api.async_register_command(hass, handler)
 
@@ -151,3 +152,16 @@ async def ws_export(manager: ClosetManager, msg: dict[str, Any]) -> dict[str, An
 @_guard
 async def ws_scan_images(manager: ClosetManager, msg: dict[str, Any]) -> dict[str, int]:
     return {"added": await manager.async_scan_images()}
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/keep",
+        vol.Required("item_ids"): [str],
+        vol.Optional("days"): vol.All(int, vol.Range(min=1, max=3650)),
+    }
+)
+@websocket_api.async_response
+@_guard
+async def ws_keep(manager: ClosetManager, msg: dict[str, Any]) -> None:
+    await manager.async_keep(msg["item_ids"], msg.get("days"))

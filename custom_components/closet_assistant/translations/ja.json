@@ -12,13 +12,15 @@
           "laundry_time": "洗濯リセット時刻",
           "suggestion_time": "毎朝のコーディネート提案時刻",
           "temperature_sensitivity": "温度の感じ方（寒がり・暑がり）",
-          "layering_threshold": "最高気温と最低気温の差がこれ以上の場合に重ね着（度）"
+          "layering_threshold": "最高気温と最低気温の差がこれ以上の場合に重ね着（度）",
+          "declutter_days": "手放す提案までの日数（未着用）"
         },
         "data_description": {
           "wears_per_wash": "洗濯間の基本的な着用回数。セーター、パンツ、ジャケットはこの数値の倍数になります。下着や靴下は常に1回です。個別のアイテムで上書きすることもできます。",
           "laundry_time": "洗濯日のこの時刻に、すべてのアイテムが再び「きれい」にマークされます。",
           "temperature_sensitivity": "寒がりの場合は正（温かめの服装）、暑がりの場合は負の値を指定します。",
-          "layering_threshold": "1日の寒暖差が大きい場合、午後には脱げるような重ね着コーディネートを提案します。"
+          "layering_threshold": "1日の寒暖差が大きい場合、午後には脱げるような重ね着コーディネートを提案します。",
+          "declutter_days": "この日数着ていないアイテムが「最近着ていない」に表示されます。コート、ショートパンツなどの季節物は常に最低1年の猶予があります。0で無効になります。"
         }
       }
     },
@@ -41,7 +43,11 @@
           "laundry_time": "洗濯リセット時刻",
           "suggestion_time": "毎朝のコーディネート提案時刻",
           "temperature_sensitivity": "温度の感じ方（寒がり・暑がり）",
-          "layering_threshold": "最高気温と最低気温の差がこれ以上の場合に重ね着（度）"
+          "layering_threshold": "最高気温と最低気温の差がこれ以上の場合に重ね着（度）",
+          "declutter_days": "手放す提案までの日数（未着用）"
+        },
+        "data_description": {
+          "declutter_days": "この日数着ていないアイテムが「最近着ていない」に表示されます。コート、ショートパンツなどの季節物は常に最低1年の猶予があります。0で無効になります。"
         }
       }
     },
@@ -71,13 +77,26 @@
   },
   "entity": {
     "sensor": {
-      "outfit": { "name": "コーディネート" },
-      "clean_items": { "name": "きれいなアイテム" }
+      "outfit": {
+        "name": "コーディネート"
+      },
+      "clean_items": {
+        "name": "きれいなアイテム"
+      },
+      "unworn_items": {
+        "name": "未着用アイテム"
+      }
     },
     "button": {
-      "randomize": { "name": "コーディネートをランダム化" },
-      "wear_outfit": { "name": "コーディネートを着用" },
-      "wash_closet": { "name": "クローゼットを洗濯（リセット）" }
+      "randomize": {
+        "name": "コーディネートをランダム化"
+      },
+      "wear_outfit": {
+        "name": "コーディネートを着用"
+      },
+      "wash_closet": {
+        "name": "クローゼットを洗濯（リセット）"
+      }
     }
   },
   "services": {
@@ -89,30 +108,48 @@
       "name": "コーディネートを着用",
       "description": "今日のコーディネート（または特定のアイテム）を着用済みにマークし、最終着用日と清潔度を更新します。",
       "fields": {
-        "item_ids": { "name": "アイテムID", "description": "アイテムIDのオプションリスト。今日の提案を着用する場合は空のままにしてください。" }
+        "item_ids": {
+          "name": "アイテムID",
+          "description": "アイテムIDのオプションリスト。今日の提案を着用する場合は空のままにしてください。"
+        }
       }
     },
     "wash_closet": {
       "name": "クローゼットを洗濯",
       "description": "すべてのアイテム、または指定されたアイテムのみの清潔度をリセットします。",
       "fields": {
-        "item_ids": { "name": "アイテムID", "description": "洗濯するアイテムIDのオプションリスト。すべて洗濯する場合は空のままにします。" }
+        "item_ids": {
+          "name": "アイテムID",
+          "description": "洗濯するアイテムIDのオプションリスト。すべて洗濯する場合は空のままにします。"
+        }
       }
     },
     "import_closet": {
       "name": "クローゼットのインポート",
       "description": "設定フォルダ内のJSONファイルまたはインラインデータからクローゼットアイテムをインポートします。",
       "fields": {
-        "path": { "name": "パス", "description": "設定フォルダからの相対ファイルパス。" },
-        "data": { "name": "データ", "description": "アイテムのリスト、またはアイテムリストを持つオブジェクト。" },
-        "replace": { "name": "置き換え", "description": "マージする代わりに、現在のクローゼットを最初に削除します。" }
+        "path": {
+          "name": "パス",
+          "description": "設定フォルダからの相対ファイルパス。"
+        },
+        "data": {
+          "name": "データ",
+          "description": "アイテムのリスト、またはアイテムリストを持つオブジェクト。"
+        },
+        "replace": {
+          "name": "置き換え",
+          "description": "マージする代わりに、現在のクローゼットを最初に削除します。"
+        }
       }
     },
     "export_closet": {
       "name": "クローゼットのエクスポート",
       "description": "クローゼットをJSONとして返し、オプションでファイルに書き込みます。",
       "fields": {
-        "path": { "name": "パス", "description": "設定フォルダからの相対的なオプションのファイルパス。" }
+        "path": {
+          "name": "パス",
+          "description": "設定フォルダからの相対的なオプションのファイルパス。"
+        }
       }
     },
     "scan_images": {

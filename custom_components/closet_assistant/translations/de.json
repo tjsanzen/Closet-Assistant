@@ -12,13 +12,15 @@
           "laundry_time": "Uhrzeit zum Zurücksetzen der Wäsche",
           "suggestion_time": "Neues Outfit jeden Morgen um",
           "temperature_sensitivity": "Temperaturempfindlichkeit",
-          "layering_threshold": "Lagenlook, wenn Hoch minus Tief mindestens beträgt (Grad)"
+          "layering_threshold": "Lagenlook, wenn Hoch minus Tief mindestens beträgt (Grad)",
+          "declutter_days": "Ausmisten vorschlagen nach (Tagen ungetragen)"
         },
         "data_description": {
           "wears_per_wash": "Anzahl der Tragevorgänge zwischen den Wäschen als Basis. Pullover, Hosen und Jacken erhalten ein Vielfaches davon; Unterwäsche und Socken sind immer 1. Du kannst jeden Artikel überschreiben.",
           "laundry_time": "Zu dieser Zeit an Waschtagen wird jeder Artikel wieder als sauber markiert.",
           "temperature_sensitivity": "Positiv, wenn du leicht frierst (kleidet dich wärmer), negativ, wenn dir schnell warm ist.",
-          "layering_threshold": "Große tägliche Temperaturschwankungen führen zu einem Lagenlook, den du am Nachmittag ablegen kannst."
+          "layering_threshold": "Große tägliche Temperaturschwankungen führen zu einem Lagenlook, den du am Nachmittag ablegen kannst.",
+          "declutter_days": "Teile, die so viele Tage nicht getragen wurden, erscheinen unter „Lange nicht getragen“. Mäntel, Shorts und andere saisonale Teile bekommen immer mindestens ein Jahr. 0 schaltet die Funktion aus."
         }
       }
     },
@@ -41,7 +43,11 @@
           "laundry_time": "Uhrzeit zum Zurücksetzen der Wäsche",
           "suggestion_time": "Neues Outfit jeden Morgen um",
           "temperature_sensitivity": "Temperaturempfindlichkeit",
-          "layering_threshold": "Lagenlook, wenn Hoch minus Tief mindestens beträgt (Grad)"
+          "layering_threshold": "Lagenlook, wenn Hoch minus Tief mindestens beträgt (Grad)",
+          "declutter_days": "Ausmisten vorschlagen nach (Tagen ungetragen)"
+        },
+        "data_description": {
+          "declutter_days": "Teile, die so viele Tage nicht getragen wurden, erscheinen unter „Lange nicht getragen“. Mäntel, Shorts und andere saisonale Teile bekommen immer mindestens ein Jahr. 0 schaltet die Funktion aus."
         }
       }
     },
@@ -71,13 +77,26 @@
   },
   "entity": {
     "sensor": {
-      "outfit": { "name": "Outfit" },
-      "clean_items": { "name": "Saubere Kleidungsstücke" }
+      "outfit": {
+        "name": "Outfit"
+      },
+      "clean_items": {
+        "name": "Saubere Kleidungsstücke"
+      },
+      "unworn_items": {
+        "name": "Ungetragene Teile"
+      }
     },
     "button": {
-      "randomize": { "name": "Outfit zufällig generieren" },
-      "wear_outfit": { "name": "Outfit tragen" },
-      "wash_closet": { "name": "Kleiderschrank waschen" }
+      "randomize": {
+        "name": "Outfit zufällig generieren"
+      },
+      "wear_outfit": {
+        "name": "Outfit tragen"
+      },
+      "wash_closet": {
+        "name": "Kleiderschrank waschen"
+      }
     }
   },
   "services": {
@@ -89,30 +108,48 @@
       "name": "Outfit tragen",
       "description": "Markiert das heutige Outfit (oder bestimmte Artikel) als getragen: aktualisiert das letzte Tragedatum und die Sauberkeit.",
       "fields": {
-        "item_ids": { "name": "Artikel-IDs", "description": "Optionale Liste von Artikel-IDs. Leer lassen, um den heutigen Vorschlag zu tragen." }
+        "item_ids": {
+          "name": "Artikel-IDs",
+          "description": "Optionale Liste von Artikel-IDs. Leer lassen, um den heutigen Vorschlag zu tragen."
+        }
       }
     },
     "wash_closet": {
       "name": "Kleiderschrank waschen",
       "description": "Setzt die Sauberkeit für jeden Artikel oder nur für die aufgelisteten Artikel zurück.",
       "fields": {
-        "item_ids": { "name": "Artikel-IDs", "description": "Optionale Liste von Artikel-IDs zum Waschen. Leer lassen, um alles zu waschen." }
+        "item_ids": {
+          "name": "Artikel-IDs",
+          "description": "Optionale Liste von Artikel-IDs zum Waschen. Leer lassen, um alles zu waschen."
+        }
       }
     },
     "import_closet": {
       "name": "Garderobe importieren",
       "description": "Importiert Garderobenartikel aus einer JSON-Datei in deinem Konfigurationsordner oder aus Inline-Daten.",
       "fields": {
-        "path": { "name": "Pfad", "description": "Dateipfad relativ zu deinem Konfigurationsordner." },
-        "data": { "name": "Daten", "description": "Eine Liste von Artikeln oder ein Objekt mit einer Artikelliste." },
-        "replace": { "name": "Ersetzen", "description": "Löscht zuerst die aktuelle Garderobe anstatt sie zusammenzuführen." }
+        "path": {
+          "name": "Pfad",
+          "description": "Dateipfad relativ zu deinem Konfigurationsordner."
+        },
+        "data": {
+          "name": "Daten",
+          "description": "Eine Liste von Artikeln oder ein Objekt mit einer Artikelliste."
+        },
+        "replace": {
+          "name": "Ersetzen",
+          "description": "Löscht zuerst die aktuelle Garderobe anstatt sie zusammenzuführen."
+        }
       }
     },
     "export_closet": {
       "name": "Garderobe exportieren",
       "description": "Gibt die Garderobe als JSON zurück und schreibt sie optional in eine Datei.",
       "fields": {
-        "path": { "name": "Pfad", "description": "Optionaler Dateipfad relativ zu deinem Konfigurationsordner." }
+        "path": {
+          "name": "Pfad",
+          "description": "Optionaler Dateipfad relativ zu deinem Konfigurationsordner."
+        }
       }
     },
     "scan_images": {

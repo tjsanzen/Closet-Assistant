@@ -12,13 +12,15 @@
           "laundry_time": "洗衣重置时间",
           "suggestion_time": "每天早晨新穿搭生成时间",
           "temperature_sensitivity": "温度敏感度",
-          "layering_threshold": "当最高温与最低温差达到（度）时进行叠穿"
+          "layering_threshold": "当最高温与最低温差达到（度）时进行叠穿",
+          "declutter_days": "建议清理前的未穿天数"
         },
         "data_description": {
           "wears_per_wash": "清洗之间的基础穿着次数。毛衣、裤子和夹克会按此数值成倍计算；内衣和袜子始终为 1。你可以覆盖任何单品。",
           "laundry_time": "在洗衣日的这个时间，所有单品将重新标记为干净。",
           "temperature_sensitivity": "怕冷为正数（穿得更暖和），怕热为负数。",
-          "layering_threshold": "当温差较大时，会搭配可在下午脱掉的叠穿造型。"
+          "layering_threshold": "当温差较大时，会搭配可在下午脱掉的叠穿造型。",
+          "declutter_days": "超过此天数未穿的衣物会显示在“最近未穿”中。大衣、短裤等季节性衣物始终至少保留一年。设为 0 可关闭此功能。"
         }
       }
     },
@@ -41,7 +43,11 @@
           "laundry_time": "洗衣重置时间",
           "suggestion_time": "每天早晨新穿搭生成时间",
           "temperature_sensitivity": "温度敏感度",
-          "layering_threshold": "当最高温与最低温差达到（度）时进行叠穿"
+          "layering_threshold": "当最高温与最低温差达到（度）时进行叠穿",
+          "declutter_days": "建议清理前的未穿天数"
+        },
+        "data_description": {
+          "declutter_days": "超过此天数未穿的衣物会显示在“最近未穿”中。大衣、短裤等季节性衣物始终至少保留一年。设为 0 可关闭此功能。"
         }
       }
     },
@@ -71,13 +77,26 @@
   },
   "entity": {
     "sensor": {
-      "outfit": { "name": "今日穿搭" },
-      "clean_items": { "name": "干净衣物" }
+      "outfit": {
+        "name": "今日穿搭"
+      },
+      "clean_items": {
+        "name": "干净衣物"
+      },
+      "unworn_items": {
+        "name": "未穿衣物"
+      }
     },
     "button": {
-      "randomize": { "name": "随机搭配" },
-      "wear_outfit": { "name": "穿着今日搭配" },
-      "wash_closet": { "name": "清洗整个衣橱" }
+      "randomize": {
+        "name": "随机搭配"
+      },
+      "wear_outfit": {
+        "name": "穿着今日搭配"
+      },
+      "wash_closet": {
+        "name": "清洗整个衣橱"
+      }
     }
   },
   "services": {
@@ -89,30 +108,48 @@
       "name": "穿着搭配",
       "description": "将今天的穿搭（或特定单品）标记为已穿：更新最后穿着时间和清洁度。",
       "fields": {
-        "item_ids": { "name": "单品 ID", "description": "可选的单品 ID 列表。留空则穿着今天的推荐搭配。" }
+        "item_ids": {
+          "name": "单品 ID",
+          "description": "可选的单品 ID 列表。留空则穿着今天的推荐搭配。"
+        }
       }
     },
     "wash_closet": {
       "name": "清洗衣橱",
       "description": "重置所有单品或仅列表中单品的清洁度。",
       "fields": {
-        "item_ids": { "name": "单品 ID", "description": "要清洗的单品 ID 可选列表。留空则清洗所有物品。" }
+        "item_ids": {
+          "name": "单品 ID",
+          "description": "要清洗的单品 ID 可选列表。留空则清洗所有物品。"
+        }
       }
     },
     "import_closet": {
       "name": "导入衣橱",
       "description": "从配置文件夹中的 JSON 文件或内联数据导入衣橱单品。",
       "fields": {
-        "path": { "name": "路径", "description": "相对于配置文件夹的文件路径。" },
-        "data": { "name": "数据", "description": "单品列表，或包含单品列表的对象。" },
-        "replace": { "name": "替换", "description": "首先删除当前衣橱而不是进行合并。" }
+        "path": {
+          "name": "路径",
+          "description": "相对于配置文件夹的文件路径。"
+        },
+        "data": {
+          "name": "数据",
+          "description": "单品列表，或包含单品列表的对象。"
+        },
+        "replace": {
+          "name": "替换",
+          "description": "首先删除当前衣橱而不是进行合并。"
+        }
       }
     },
     "export_closet": {
       "name": "导出衣橱",
       "description": "以 JSON 格式返回衣橱数据，并可选择将其写入文件。",
       "fields": {
-        "path": { "name": "路径", "description": "相对于配置文件夹的可选文件路径。" }
+        "path": {
+          "name": "路径",
+          "description": "相对于配置文件夹的可选文件路径。"
+        }
       }
     },
     "scan_images": {

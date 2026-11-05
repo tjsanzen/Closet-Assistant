@@ -10,7 +10,7 @@ It ships with two dashboard cards:
 | Card | Type |
 |---|---|
 | **Wear Today**: high/low, rain chance, UV and wind, today's outfit as a board of cards (top and bottom large, then layers, shoes and accessories), **shed later** badges on removable layers, **Randomize**, **Wear this**, **Why?** notes, and a **Closet** button that opens the Manage Closet card in a popup | `custom:closet-assistant-today-card` |
-| **Manage Closet**: add, edit, remove items, upload images, cleanliness, **Wash closet**, import/export JSON, scan the image folder | `custom:closet-assistant-closet-card` |
+| **Manage Closet**: add, edit, remove items, upload images, cleanliness, **Wash closet**, an **Unworn** review list for decluttering, import/export JSON, scan the image folder | `custom:closet-assistant-closet-card` |
 
 The cards are bundled inside the integration and load on every dashboard automatically, so that you don't need to add a separate Lovelace resource.
 
@@ -39,6 +39,7 @@ The cards are bundled inside the integration and load on every dashboard automat
 | New outfit each morning at | When the day's suggestion is generated. The default is 05:00. |
 | Temperature sensitivity | −5 (run hot) to +5 (run cold). Each step shifts the targets by about 2 °F. |
 | Layering threshold | If high minus low is at least this many degrees, the outfit is built in layers. |
+| Suggest letting go after | Days unworn before an item is flagged in the closet's **Unworn** list. The default is 180. Seasonal pieces always get at least a year. 0 turns it off. |
 
 You can change all of these later under **Configure**.
 
@@ -130,11 +131,21 @@ Value contrast (high vs low) is reported in the "Why this?" notes but not penali
 - **Wash closet** (on the card, the button entity or `closet_assistant.wash_closet`) resets everything. Laundry day does this automatically.
 - In the item editor: **Mark clean** washes one item, and **Wore it today** logs a single piece.
 
+## Decluttering: "Haven't worn lately"
+Every item records when it was added and when it was last worn. When something hasn't been worn for your threshold (6 months by default), the Manage Closet card shows a banner and an **Unworn** filter chip. Never-worn items count from the day they were added. Items that existed before this feature count from the day you updated.
+
+The review list shows each piece, how long it's been unused and how often it's ever been worn, with two choices:
+- **Keep** hides the item from the list for another full window. Wearing it also resets the clock.
+- **Let go** removes it from your closet and deletes its photo.
+
+**Seasonal pieces** get at least a year before they're flagged. That covers coats, shorts, anything with warmth 7 or above, and very light tees and skirts, so you aren't nagged about a parka in July. Flagged items also show an *unworn* tag in the main grid.
+
 ## Entities
 | Entity | |
 |---|---|
 | `sensor.closet_assistant_outfit` | State: today's outfit. Attributes: `items`, `removable`, `notes`, `high`, `low`, `worn`, `layered`. |
 | `sensor.closet_assistant_clean_items` | Count of clean items. Attributes: `in_hamper`, `total_items`, `last_wash`, `next_laundry`. |
+| `sensor.closet_assistant_unworn_items` | Count of items flagged for decluttering. The `items` attribute lists each one with `unworn_days`. |
 | `button.closet_assistant_randomize_outfit` / `_wear_outfit` / `_wash_closet` | For automations and other dashboards. |
 
 Example automation, a morning notification:
@@ -147,6 +158,22 @@ actions:
     data:
       title: "Wear today ({{ state_attr('sensor.closet_assistant_outfit','high') }}°/{{ state_attr('sensor.closet_assistant_outfit','low') }}°)"
       message: "{{ states('sensor.closet_assistant_outfit') }}"
+```
+
+A monthly declutter reminder:
+```yaml
+triggers:
+  - trigger: time
+    at: "10:00:00"
+conditions:
+  - "{{ now().day == 1 and states('sensor.closet_assistant_unworn_items') | int > 0 }}"
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      title: "Closet check-in"
+      message: >
+        {{ states('sensor.closet_assistant_unworn_items') }} items haven't been worn in a while:
+        {{ state_attr('sensor.closet_assistant_unworn_items', 'items') | map(attribute='name') | join(', ') }}
 ```
 
 ## Actions

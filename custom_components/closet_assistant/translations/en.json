@@ -12,13 +12,15 @@
           "laundry_time": "Laundry reset time",
           "suggestion_time": "New outfit each morning at",
           "temperature_sensitivity": "Temperature sensitivity",
-          "layering_threshold": "Layer when high minus low is at least (degrees)"
+          "layering_threshold": "Layer when high minus low is at least (degrees)",
+          "declutter_days": "Suggest letting go after (days unworn)"
         },
         "data_description": {
           "wears_per_wash": "Base wears between washes. Sweaters, pants and jackets get a multiple of this; underwear and socks are always 1. You can override any item.",
           "laundry_time": "At this time on laundry days every item is marked clean again.",
           "temperature_sensitivity": "Positive if you run cold (dresses you warmer), negative if you run hot.",
-          "layering_threshold": "Big daily swings get a layered outfit you can shed by the afternoon."
+          "layering_threshold": "Big daily swings get a layered outfit you can shed by the afternoon.",
+          "declutter_days": "Items not worn in this many days show up under \"Haven't worn lately\". Coats, shorts and other seasonal pieces always get at least a year. 0 turns it off."
         }
       }
     },
@@ -41,7 +43,11 @@
           "laundry_time": "Laundry reset time",
           "suggestion_time": "New outfit each morning at",
           "temperature_sensitivity": "Temperature sensitivity",
-          "layering_threshold": "Layer when high minus low is at least (degrees)"
+          "layering_threshold": "Layer when high minus low is at least (degrees)",
+          "declutter_days": "Suggest letting go after (days unworn)"
+        },
+        "data_description": {
+          "declutter_days": "Items not worn in this many days show up under \"Haven't worn lately\". Coats, shorts and other seasonal pieces always get at least a year. 0 turns it off."
         }
       }
     },
@@ -71,13 +77,26 @@
   },
   "entity": {
     "sensor": {
-      "outfit": { "name": "Outfit" },
-      "clean_items": { "name": "Clean items" }
+      "outfit": {
+        "name": "Outfit"
+      },
+      "clean_items": {
+        "name": "Clean items"
+      },
+      "unworn_items": {
+        "name": "Unworn items"
+      }
     },
     "button": {
-      "randomize": { "name": "Randomize outfit" },
-      "wear_outfit": { "name": "Wear outfit" },
-      "wash_closet": { "name": "Wash closet" }
+      "randomize": {
+        "name": "Randomize outfit"
+      },
+      "wear_outfit": {
+        "name": "Wear outfit"
+      },
+      "wash_closet": {
+        "name": "Wash closet"
+      }
     }
   },
   "services": {
@@ -89,30 +108,48 @@
       "name": "Wear outfit",
       "description": "Mark today's outfit (or specific items) as worn: updates last worn and cleanliness.",
       "fields": {
-        "item_ids": { "name": "Item IDs", "description": "Optional list of item IDs. Leave empty to wear today's suggestion." }
+        "item_ids": {
+          "name": "Item IDs",
+          "description": "Optional list of item IDs. Leave empty to wear today's suggestion."
+        }
       }
     },
     "wash_closet": {
       "name": "Wash closet",
       "description": "Reset cleanliness for every item, or only the listed items.",
       "fields": {
-        "item_ids": { "name": "Item IDs", "description": "Optional list of item IDs to wash. Leave empty to wash everything." }
+        "item_ids": {
+          "name": "Item IDs",
+          "description": "Optional list of item IDs to wash. Leave empty to wash everything."
+        }
       }
     },
     "import_closet": {
       "name": "Import closet",
       "description": "Import closet items from a JSON file in your config folder or from inline data.",
       "fields": {
-        "path": { "name": "Path", "description": "File path relative to your config folder." },
-        "data": { "name": "Data", "description": "A list of items, or an object with an items list." },
-        "replace": { "name": "Replace", "description": "Delete the current closet first instead of merging." }
+        "path": {
+          "name": "Path",
+          "description": "File path relative to your config folder."
+        },
+        "data": {
+          "name": "Data",
+          "description": "A list of items, or an object with an items list."
+        },
+        "replace": {
+          "name": "Replace",
+          "description": "Delete the current closet first instead of merging."
+        }
       }
     },
     "export_closet": {
       "name": "Export closet",
       "description": "Return the closet as JSON and optionally write it to a file.",
       "fields": {
-        "path": { "name": "Path", "description": "Optional file path relative to your config folder." }
+        "path": {
+          "name": "Path",
+          "description": "Optional file path relative to your config folder."
+        }
       }
     },
     "scan_images": {
