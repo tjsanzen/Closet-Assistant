@@ -4,7 +4,7 @@
  *   custom:closet-assistant-closet-card  - "Manage Closet"
  * Served and auto-loaded by the closet_assistant integration. No build step.
  */
-const CA_VERSION = "0.4.0";
+const CA_VERSION = "0.5.0";
 const DOMAIN = "closet_assistant";
 
 /* ------------------------------------------------------------------ shared store */
@@ -91,17 +91,101 @@ function fmtTemp(v) {
   return v === null || v === undefined ? "--" : `${Math.round(v)}°`;
 }
 
+/* ------------------------------------------------------------------ garment silhouettes
+ * Items without a photo are drawn as a clothing shape in their own colour and pattern.
+ * `shape` is used as a CSS mask over the pattern fill, `detail` adds seams/hems on top.
+ * All paths use a 100x100 viewBox.
+ */
+const GARMENTS = {
+  short_sleeve_shirt: {
+    shape: "M36 10 Q50 18 64 10 L82 18 L92 36 L78 43 L72 37 L72 90 Q50 94 28 90 L28 37 L22 43 L8 36 L18 18 Z",
+    detail: "M36 10 Q50 22 64 10 M28 37 L28 39 M72 37 L72 39 M22 43 L18 37 M78 43 L82 37",
+  },
+  long_sleeve_shirt: {
+    shape: "M37 9 Q50 16 63 9 L80 15 Q88 19 89 30 L93 84 L82 86 L75 38 L72 36 L72 92 Q50 95 28 92 L28 36 L25 38 L18 86 L7 84 L11 30 Q12 19 20 15 Z",
+    detail: "M37 9 L44 17 L50 13 L56 17 L63 9 M50 14 L50 90 M82 80 L93 79 M7 79 L18 80",
+  },
+  sweater: {
+    shape: "M38 9 Q50 15 62 9 L80 15 Q88 19 89 30 L93 84 L82 86 L75 38 L72 36 L72 92 Q50 95 28 92 L28 36 L25 38 L18 86 L7 84 L11 30 Q12 19 20 15 Z",
+    detail: "M38 9 Q50 20 62 9 M29 86 Q50 89 71 86 M82 80 L93 79 M7 79 L18 80 M28 38 L28 86 M72 38 L72 86",
+  },
+  jacket: {
+    shape: "M36 8 L50 14 L64 8 L80 14 Q88 18 89 30 L93 86 L82 88 L75 40 L73 38 L73 93 L27 93 L27 38 L25 40 L18 88 L7 86 L11 30 Q12 18 20 14 Z",
+    detail: "M50 14 L50 93 M36 8 L44 30 L50 14 M64 8 L56 30 L50 14 M32 60 L42 60 M58 60 L68 60",
+  },
+  coat: {
+    shape: "M36 6 L50 12 L64 6 L80 12 Q88 16 89 28 L93 84 L82 86 L75 36 L74 34 L76 97 L24 97 L26 34 L25 36 L18 86 L7 84 L11 28 Q12 16 20 12 Z",
+    detail: "M36 6 L45 32 L50 12 M64 6 L55 32 L50 12 M50 32 L50 97 M45 44 h0.1 M55 44 h0.1 M45 58 h0.1 M55 58 h0.1 M45 72 h0.1 M55 72 h0.1",
+  },
+  pants: {
+    shape: "M27 6 L73 6 L78 95 L56 95 L50 32 L44 95 L22 95 Z",
+    detail: "M27 13 L73 13 M50 13 L50 32 M34 13 Q36 22 30 24 M66 13 Q64 22 70 24",
+  },
+  shorts: {
+    shape: "M22 20 L78 20 L84 72 L55 76 L50 44 L45 76 L16 72 Z",
+    detail: "M22 28 L78 28 M50 28 L50 44 M30 28 Q32 36 26 38 M70 28 Q68 36 74 38",
+  },
+  skirt: {
+    shape: "M32 16 L68 16 L86 84 Q50 92 14 84 Z",
+    detail: "M32 23 L68 23 M42 23 L36 86 M58 23 L64 86 M50 23 L50 88",
+  },
+  shoes: {
+    shape: "M8 66 Q8 46 22 44 L36 42 Q42 54 56 56 L80 61 Q93 64 93 74 L93 78 L8 78 Z",
+    detail: "M8 71 L93 71 M36 42 L32 56 M44 50 L40 58 M52 54 L49 60",
+  },
+  belt: {
+    shape: "M4 42 L96 42 L96 58 L4 58 Z",
+    detail: "M14 39 L30 39 L30 61 L14 61 Z M22 50 L36 50 M60 50 h0.1 M70 50 h0.1 M80 50 h0.1",
+  },
+  hat: {
+    shape: "M18 66 Q18 30 50 28 Q82 30 82 66 Q92 66 96 72 L60 74 Q40 74 18 70 Z",
+    detail: "M50 28 L50 66 M30 40 Q50 50 70 40 M50 27 h0.1",
+  },
+  socks: {
+    shape: "M36 8 L60 8 L60 54 Q60 60 66 64 L82 72 Q91 78 85 88 Q80 94 70 91 L42 78 Q34 74 36 62 Z",
+    detail: "M36 18 L60 18 M36 13 L60 13 M70 74 Q64 82 72 90",
+  },
+  underwear: {
+    shape: "M14 26 L86 26 L84 42 Q68 48 60 74 L40 74 Q32 48 16 42 Z",
+    detail: "M14 34 L86 34 M40 74 Q50 66 60 74",
+  },
+  accessory: {
+    shape: "M28 10 Q50 22 72 10 L74 26 Q50 38 26 26 Z M54 28 L68 88 L54 90 L46 32 Z",
+    detail: "M56 86 L56 94 M60 86 L60 94 M64 86 L64 93",
+  },
+};
+const _maskCache = new Map();
+function garmentMask(category) {
+  if (!_maskCache.has(category)) {
+    const g = GARMENTS[category] || GARMENTS.short_sleeve_shirt;
+    // double quotes inside the SVG (percent-encoded) + single-quoted url() so it can sit in a style="" attribute
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="${g.shape}"/></svg>`;
+    _maskCache.set(category, `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, "%27")}')`);
+  }
+  return _maskCache.get(category);
+}
+function garmentArt(item) {
+  const g = GARMENTS[item.category] || GARMENTS.short_sleeve_shirt;
+  const mask = garmentMask(item.category);
+  const ink = isLight(item.color) ? "rgba(0,0,0,.28)" : "rgba(255,255,255,.28)";
+  const edge = isLight(item.color) ? "rgba(0,0,0,.18)" : "rgba(0,0,0,.25)";
+  return `<div class="garment">
+      <div class="g-fill" style="background:${patternFill(item)};-webkit-mask-image:${mask};mask-image:${mask}"></div>
+      <svg class="g-lines" viewBox="0 0 100 100" aria-hidden="true">
+        <path d="${g.shape}" fill="none" stroke="${edge}" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="${g.detail}" fill="none" stroke="${ink}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>`;
+}
+
 function itemVisual(item, categories) {
-  const icon = (categories && categories[item.category] && categories[item.category].icon) || "mdi:hanger";
   if (item.image_url) {
     const fit = caImageFit.get(item.image_url) || "";
     return `<div class="img ${fit}" style="--c:${esc(item.color)}">
         <img src="${esc(item.image_url)}" alt="${esc(item.name)}" loading="lazy" data-fit>
       </div>`;
   }
-  return `<div class="img" style="--c:${esc(item.color)}">
-      <div class="swatch" style="background:${patternFill(item)}"><ha-icon icon="${esc(icon)}" style="color:${isLight(item.color) ? "rgba(0,0,0,.55)" : "rgba(255,255,255,.9)"}"></ha-icon></div>
-    </div>`;
+  return `<div class="img drawn" style="--c:${esc(item.color)}">${garmentArt(item)}</div>`;
 }
 
 /* Photos with a transparent background float on a tinted tile; photos with a
@@ -157,7 +241,11 @@ function pips(item) {
   const max = item.max_wears_effective || 1;
   const left = item.cleanliness ?? max;
   let out = "";
-  for (let i = 0; i < Math.min(max, 10); i++) out += `<i class="${i < left ? "on" : ""}"></i>`;
+  if (max > 5) {
+    // long-wear items (jackets, coats): one dot + a count keeps the row tidy
+    return `<span class="pips" title="${left} of ${max} wears left"><i class="${left ? "on" : ""}"></i><span class="pip-count">${left}/${max}</span></span>`;
+  }
+  for (let i = 0; i < max; i++) out += `<i class="${i < left ? "on" : ""}"></i>`;
   return `<span class="pips" title="${left} of ${max} wears left">${out}</span>`;
 }
 
@@ -216,34 +304,43 @@ async function prepareImage(file) {
 }
 
 const SHARED_CSS = `
-  :host { display:block; }
-  ha-card { padding:16px; overflow:hidden; }
-  button { font:inherit; cursor:pointer; border:none; border-radius:999px; padding:8px 14px;
-    background:var(--secondary-background-color); color:var(--primary-text-color); display:inline-flex; align-items:center; gap:6px; }
-  button:hover { filter:brightness(0.96); }
-  button.primary { background:var(--primary-color); color:var(--text-primary-color, #fff); }
+  :host {
+    display:block;
+    --ca-surface: color-mix(in srgb, var(--primary-text-color) 3%, var(--card-background-color));
+    --ca-surface-2: color-mix(in srgb, var(--primary-text-color) 6.5%, var(--card-background-color));
+    --ca-line: color-mix(in srgb, var(--primary-text-color) 11%, transparent);
+    --ca-accent: var(--primary-color);
+    --ca-shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 14px rgba(0,0,0,.06);
+  }
+  ha-card { padding:18px; overflow:hidden; color:var(--primary-text-color); }
+  button { font:inherit; font-size:14px; cursor:pointer; border:1px solid transparent; border-radius:999px; padding:7px 14px;
+    background:transparent; color:var(--primary-text-color); display:inline-flex; align-items:center; gap:6px;
+    transition:background .15s, border-color .15s, transform .1s, box-shadow .15s; -webkit-tap-highlight-color:transparent; }
+  button:hover { background:var(--ca-surface-2); }
+  button:active { transform:scale(.97); }
+  button.outline { border-color:var(--ca-line); }
+  button.primary { background:var(--ca-accent); color:var(--text-primary-color, #fff);
+    box-shadow:0 2px 10px color-mix(in srgb, var(--ca-accent) 35%, transparent); }
+  button.primary:hover { background:color-mix(in srgb, var(--ca-accent) 88%, #000); }
   button.danger { color:var(--error-color, #db4437); }
-  button.small { padding:5px 10px; font-size:0.85em; }
-  button[disabled] { opacity:.55; cursor:default; }
+  button.small { padding:6px 12px; font-size:13.5px; }
+  button[disabled] { opacity:.5; cursor:default; transform:none; }
   button ha-icon { --mdc-icon-size:18px; }
   .muted { color:var(--secondary-text-color); }
-  .img { position:relative; aspect-ratio:1/1; border-radius:12px; display:flex; align-items:center; justify-content:center;
-    background:color-mix(in srgb, var(--c, #888) 14%, var(--secondary-background-color)); overflow:hidden; }
-  .img img { width:84%; height:84%; object-fit:contain; filter:drop-shadow(0 3px 6px rgba(0,0,0,.18)); }
-  .img.opaque { background:var(--secondary-background-color); }
+  .img { position:relative; aspect-ratio:1/1; border-radius:14px; display:flex; align-items:center; justify-content:center; overflow:hidden;
+    background:radial-gradient(130% 100% at 50% 15%, var(--card-background-color) 0%, var(--ca-surface-2) 100%); }
+  .img img { width:80%; height:80%; object-fit:contain; filter:drop-shadow(0 6px 10px rgba(0,0,0,.15)); }
   .img.opaque img { width:100%; height:100%; object-fit:cover; filter:none; }
-  .img .swatch { width:58%; height:58%; border-radius:22%; display:flex; align-items:center; justify-content:center;
-    box-shadow:inset 0 0 0 1px rgba(0,0,0,.08), 0 3px 8px rgba(0,0,0,.15); }
-  .img .swatch ha-icon { --mdc-icon-size:46%; }
-  .pips { display:inline-flex; gap:3px; }
-  .pips i { width:7px; height:7px; border-radius:50%; background:var(--divider-color); }
+  .garment { position:relative; width:70%; height:70%; filter:drop-shadow(0 6px 10px rgba(0,0,0,.15)); }
+  .g-fill, .g-lines { position:absolute; inset:0; width:100%; height:100%; }
+  .g-fill { -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
+  .pips { display:inline-flex; gap:3px; align-items:center; flex:none; }
+  .pip-count { font-size:11px; margin-left:2px; font-variant-numeric:tabular-nums; }
+  .pips i { width:6px; height:6px; border-radius:50%; background:var(--ca-line); }
   .pips i.on { background:var(--success-color, #43a047); }
   .err { padding:16px; color:var(--error-color, #db4437); }
 `;
-
 /* ================================================================== WEAR TODAY */
-const BOARD_HERO = ["top", "bottom"];
-const BOARD_SMALL = ["outer", "mid", "shoes", "belt", "hat", "accessory"];
 
 class ClosetAssistantTodayCard extends HTMLElement {
   constructor() {
@@ -333,10 +430,10 @@ class ClosetAssistantTodayCard extends HTMLElement {
     this._render();
   }
 
-  _tile(item, cats, large) {
-    return `<div class="tile ${large ? "lg" : ""} ${item.removable ? "removable" : ""}" style="--c:${esc(item.color)}" title="${esc(item.name)}">
+  _tile(item, cats) {
+    return `<div class="tile ${item.removable ? "removable" : ""}" style="--c:${esc(item.color)}" title="${esc(item.name)}">
       ${itemVisual(item, cats)}
-      ${item.removable ? `<span class="badge"><ha-icon icon="mdi:arrow-collapse-down"></ha-icon>shed later</span>` : ""}
+      ${item.removable ? `<span class="badge">Shed later</span>` : ""}
       <div class="label"><span class="name">${esc(item.name)}</span><span class="slot">${esc(SLOT_LABELS[item.slot] || "")}</span></div>
     </div>`;
   }
@@ -350,7 +447,7 @@ class ClosetAssistantTodayCard extends HTMLElement {
     if (caStore.error) {
       body = `<div class="err">${esc(caStore.error)}</div>`;
     } else if (!d) {
-      body = `<div class="muted" style="padding:24px;text-align:center">Opening the closet...</div>`;
+      body = `<div class="muted loading">Opening the closet...</div>`;
     } else {
       const w = d.weather || {};
       const t = d.today || { items: [], notes: [] };
@@ -358,55 +455,77 @@ class ClosetAssistantTodayCard extends HTMLElement {
       const cats = d.categories;
       const by = {};
       for (const it of items) by[it.slot] = it;
-      const hero = BOARD_HERO.filter((s) => by[s]);
-      const small = BOARD_SMALL.filter((s) => by[s]);
+      const tiles = BOARD_ORDER.filter((s) => by[s]);
       const basics = ["underwear", "socks"].filter((s) => by[s]);
       const removable = items.filter((i) => i.removable);
-      const meta = [];
-      if (w.precip_prob !== null && w.precip_prob !== undefined) meta.push(`<span><ha-icon icon="mdi:water-percent"></ha-icon>${Math.round(w.precip_prob)}%</span>`);
-      if (w.uv !== null && w.uv !== undefined) meta.push(`<span><ha-icon icon="mdi:sun-wireless-outline"></ha-icon>UV ${esc(w.uv)}</span>`);
-      if (w.wind_mph) meta.push(`<span><ha-icon icon="mdi:weather-windy"></ha-icon>${Math.round(w.wind_mph)} mph</span>`);
+      const theme = WEATHER_THEMES[w.condition] || WEATHER_THEMES.partlycloudy;
+      const pills = [];
+      if (w.precip_prob !== null && w.precip_prob !== undefined) pills.push(`<span class="pill"><ha-icon icon="mdi:umbrella-outline"></ha-icon>${Math.round(w.precip_prob)}%</span>`);
+      if (w.uv !== null && w.uv !== undefined) pills.push(`<span class="pill"><ha-icon icon="mdi:sun-wireless-outline"></ha-icon>UV ${Math.round(Number(w.uv))}</span>`);
+      if (w.wind_mph) pills.push(`<span class="pill"><ha-icon icon="mdi:weather-windy"></ha-icon>${Math.round(w.wind_mph)} mph</span>`);
+      const dateText = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
       body = `
-        <div class="wx">
-          <ha-icon class="wx-icon" icon="${WEATHER_ICONS[w.condition] || "mdi:weather-partly-cloudy"}"></ha-icon>
-          <div class="temps">
-            <div><span class="hi">${fmtTemp(w.high)}</span><span class="lo"> / ${fmtTemp(w.low)}</span></div>
-            <div class="muted cond">${esc((w.condition || "").replace("partlycloudy", "partly cloudy").replace(/-/g, " "))}</div>
+        <div class="sky" style="--sky:${theme.bg};--ink:${theme.ink}">
+          <div class="sky-main">
+            <ha-icon class="sky-icon" icon="${WEATHER_ICONS[w.condition] || "mdi:weather-partly-cloudy"}"></ha-icon>
+            <div class="sky-text">
+              <div class="eyebrow">${esc(cfg.title || "Wear today")} · ${esc(dateText)}</div>
+              <div class="temps"><span class="hi">${fmtTemp(w.high)}</span><span class="lo">${fmtTemp(w.low)}</span></div>
+              <div class="cond">${esc((w.condition || "").replace("partlycloudy", "partly cloudy").replace("clear-night", "clear").replace(/-/g, " "))}</div>
+            </div>
           </div>
-          <div class="wx-meta muted">${meta.join("")}</div>
+          ${pills.length ? `<div class="pills">${pills.join("")}</div>` : ""}
         </div>
         ${removable.length
           ? `<div class="banner"><ha-icon icon="mdi:layers-triple-outline"></ha-icon>
-             <span>Big swing today. Start layered, then shed the ${removable.map((i) => `<b>${esc(i.name)}</b>`).join(" and ")} as it warms up.</span></div>`
+             <span>Big temperature swing. Start layered, then shed the ${removable.map((i) => `<b>${esc(i.name)}</b>`).join(" and ")} as it warms up.</span></div>`
           : ""}
         ${items.length
-          ? `<div class="board">
-              ${hero.length ? `<div class="hero">${hero.map((s) => this._tile(by[s], cats, true)).join("")}</div>` : ""}
-              ${small.length ? `<div class="smalls">${small.map((s) => this._tile(by[s], cats, false)).join("")}</div>` : ""}
-              ${basics.length ? `<div class="basics muted">${basics.map((s) => `<span class="chip"><span class="dot" style="background:${esc(by[s].color)}"></span>${esc(by[s].name)}</span>`).join("")}</div>` : ""}
-            </div>`
-          : `<div class="empty muted">${esc((t.notes || [])[0] || "No outfit yet. Add clothes to your closet.")}</div>`}
+          ? `<div class="board">${tiles.map((s) => this._tile(by[s], cats)).join("")}</div>
+             ${basics.length ? `<div class="basics"><span class="muted">Plus</span>${basics.map((s) => `<span class="basic"><span class="dot" style="background:${esc(by[s].color)}"></span>${esc(by[s].name)}</span>`).join("")}</div>` : ""}`
+          : `<div class="empty"><ha-icon icon="mdi:hanger"></ha-icon><div>${esc((t.notes || [])[0] || "No outfit yet. Add a few clothes to your closet to get started.")}</div></div>`}
         ${this._showWhy && t.notes && t.notes.length ? `<ul class="why">${t.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
         ${this._toast ? `<div class="err small-err">${esc(this._toast)}</div>` : ""}
         <div class="actions">
           <button class="small" data-action="randomize" ${this._busy ? "disabled" : ""} title="Pick a different outfit">
-            <ha-icon icon="mdi:dice-multiple"></ha-icon>Randomize</button>
-          ${t.notes && t.notes.length ? `<button class="small" data-action="why" title="Why this outfit?"><ha-icon icon="mdi:information-outline"></ha-icon>${this._showWhy ? "Hide" : "Why?"}</button>` : ""}
+            <ha-icon icon="mdi:dice-multiple-outline"></ha-icon>Randomize</button>
+          ${t.notes && t.notes.length ? `<button class="small ${this._showWhy ? "on" : ""}" data-action="why" title="Why this outfit?"><ha-icon icon="mdi:lightbulb-on-outline"></ha-icon>Why?</button>` : ""}
           ${showClosetBtn ? `<button class="small" data-action="open-closet" title="Manage your closet"><ha-icon icon="mdi:wardrobe-outline"></ha-icon>Closet</button>` : ""}
-          <span style="flex:1"></span>
+          <span class="spacer"></span>
           ${items.length
             ? t.worn
-              ? `<button class="small" disabled><ha-icon icon="mdi:check"></ha-icon>Worn today</button>`
-              : `<button class="small primary" data-action="wear" ${this._busy ? "disabled" : ""}><ha-icon icon="mdi:hanger"></ha-icon>Wear this</button>`
+              ? `<span class="worn"><ha-icon icon="mdi:check-circle"></ha-icon>Worn today</span>`
+              : `<button class="small primary" data-action="wear" ${this._busy ? "disabled" : ""}><ha-icon icon="mdi:check"></ha-icon>Wear this</button>`
             : ""}
         </div>`;
     }
     this._toast = null;
-    this.$main.innerHTML = `${cfg.title ? `<div class="title">${esc(cfg.title)}</div>` : ""}${body}`;
+    this.$main.innerHTML = body;
     caFitImages(this.$main);
   }
 }
+
+const BOARD_ORDER = ["outer", "mid", "top", "bottom", "shoes", "belt", "hat", "accessory"];
+
+/* Soft sky gradients behind the weather, by condition. `ink` is the text colour on top. */
+const WEATHER_THEMES = {
+  sunny: { bg: "linear-gradient(135deg, #ffe29a 0%, #ffb37c 100%)", ink: "#4a2a08" },
+  "clear-night": { bg: "linear-gradient(135deg, #2c3e70 0%, #5a4e8c 100%)", ink: "#f1f0ff" },
+  partlycloudy: { bg: "linear-gradient(135deg, #cfe6ff 0%, #f3e7d3 100%)", ink: "#1e3550" },
+  cloudy: { bg: "linear-gradient(135deg, #dfe4ea 0%, #b8c2cc 100%)", ink: "#26323d" },
+  fog: { bg: "linear-gradient(135deg, #e6e9ec 0%, #c9ced4 100%)", ink: "#2b333b" },
+  rainy: { bg: "linear-gradient(135deg, #7aa0c4 0%, #46607d 100%)", ink: "#f2f7fc" },
+  pouring: { bg: "linear-gradient(135deg, #5d7f9f 0%, #2f4359 100%)", ink: "#f2f7fc" },
+  lightning: { bg: "linear-gradient(135deg, #6b6f8f 0%, #343650 100%)", ink: "#f4f3ff" },
+  "lightning-rainy": { bg: "linear-gradient(135deg, #6b6f8f 0%, #2e3247 100%)", ink: "#f4f3ff" },
+  snowy: { bg: "linear-gradient(135deg, #f4f8ff 0%, #c9daf2 100%)", ink: "#1f3454" },
+  "snowy-rainy": { bg: "linear-gradient(135deg, #e3ecf7 0%, #a9bfd9 100%)", ink: "#1f3454" },
+  hail: { bg: "linear-gradient(135deg, #e3ecf7 0%, #9fb3cc 100%)", ink: "#1f3454" },
+  windy: { bg: "linear-gradient(135deg, #d9efe9 0%, #c7d6e8 100%)", ink: "#1f3a3a" },
+  "windy-variant": { bg: "linear-gradient(135deg, #d9efe9 0%, #c7d6e8 100%)", ink: "#1f3a3a" },
+  exceptional: { bg: "linear-gradient(135deg, #ffd6c9 0%, #f2a69a 100%)", ink: "#4a1a10" },
+};
 
 /* CSS background approximating the item's pattern, for items without a photo */
 function patternFill(item) {
@@ -430,86 +549,90 @@ function patternFill(item) {
 }
 
 const TODAY_CSS = `
-  ha-card { padding:16px; }
-  .title { font-size:1.2em; font-weight:500; margin-bottom:8px; }
-  .wx { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-  .wx-icon { --mdc-icon-size:44px; color:var(--state-icon-color, var(--primary-color)); }
-  .temps .hi { font-size:2em; font-weight:500; }
-  .temps .lo { font-size:1.3em; color:var(--secondary-text-color); }
-  .cond { text-transform:capitalize; font-size:.85em; }
-  .wx-meta { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:2px; font-size:.85em; }
-  .wx-meta span { display:inline-flex; align-items:center; gap:3px; }
-  .wx-meta ha-icon { --mdc-icon-size:16px; }
-  .banner { display:flex; gap:8px; align-items:flex-start; padding:8px 12px; border-radius:12px; margin-bottom:12px; font-size:.88em;
-    background:color-mix(in srgb, var(--primary-color) 10%, transparent); }
-  .banner ha-icon { --mdc-icon-size:18px; flex:none; color:var(--primary-color); }
-  .board { display:flex; flex-direction:column; gap:10px; }
-  .hero { display:grid; grid-template-columns:repeat(auto-fit, minmax(0, 1fr)); gap:10px; }
-  .smalls { display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:10px; }
-  .tile { position:relative; display:flex; flex-direction:column; border-radius:16px; overflow:hidden;
-    background:var(--card-background-color); border:1px solid color-mix(in srgb, var(--c, #888) 22%, var(--divider-color));
-    box-shadow:0 1px 3px rgba(0,0,0,.06); }
-  .tile .img { border-radius:0; aspect-ratio:1 / 1; }
-  .tile.lg .img { aspect-ratio:4 / 5; }
-  .tile.removable { border-style:dashed; border-color:var(--primary-color); }
-  .tile .badge { position:absolute; top:8px; left:8px; display:inline-flex; align-items:center; gap:3px; font-size:.68em; font-weight:500;
-    background:var(--primary-color); color:var(--text-primary-color, #fff); padding:2px 8px 2px 5px; border-radius:999px; }
-  .tile .badge ha-icon { --mdc-icon-size:13px; }
-  .tile .label { display:flex; flex-direction:column; padding:7px 10px 9px; gap:1px; min-width:0; }
-  .tile .name { font-size:.86em; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .tile:not(.lg) .name { font-size:.78em; }
-  .tile .slot { font-size:.7em; color:var(--secondary-text-color); text-transform:uppercase; letter-spacing:.04em; }
-  .basics { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; font-size:.8em; }
-  .chip { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:999px; background:var(--secondary-background-color); }
-  .dot { width:9px; height:9px; border-radius:50%; border:1px solid var(--divider-color); flex:none; }
-  .why { margin:12px 0 0; padding-left:18px; font-size:.85em; color:var(--secondary-text-color); }
-  .why li { margin-bottom:3px; }
-  .empty { padding:24px 8px; text-align:center; }
-  .actions { display:flex; gap:6px; align-items:center; margin-top:14px; flex-wrap:wrap; }
-  .small-err { padding:8px 0 0; font-size:.85em; }
-  .closet-overlay { position:fixed; inset:0; z-index:998; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px; }
-  .closet-dialog { position:relative; width:min(960px, 100%); max-height:92vh; overflow:auto; border-radius:18px;
-    box-shadow:0 10px 40px rgba(0,0,0,.35); background:var(--card-background-color); }
-  .closet-dialog closet-assistant-closet-card { display:block; }
-  .close-x { position:absolute; top:12px; right:12px; z-index:2; padding:6px; }
-
-  /* ---- Responsive scaling: the card sizes itself to its own width, not the screen ---- */
   #main { container-type:inline-size; }
-  .tile .name { font-size:14px; }
-  .tile:not(.lg) .name { font-size:13px; }
-  .tile .slot { font-size:11px; }
-  .chip, .why, .banner { font-size:13px; }
-  .actions button { font-size:14px; min-height:34px; }
-  .board { width:100%; max-width:1100px; margin:0 auto; }
-  .wx, .banner, .actions, .why { max-width:1100px; margin-left:auto; margin-right:auto; }
+  .loading { padding:28px; text-align:center; }
 
-  /* Narrow (phone column): smaller hero art so the card isn't a skyscraper */
-  @container (max-width: 380px) {
-    .tile.lg .img { aspect-ratio:1 / 1; }
-    .smalls { grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); gap:8px; }
-    .temps .hi { font-size:1.7em; }
+  /* weather "sky" panel */
+  .sky { background:var(--sky); color:var(--ink); border-radius:20px; padding:16px 18px; display:flex; align-items:center;
+    justify-content:space-between; gap:14px; flex-wrap:wrap; position:relative; overflow:hidden; }
+  .sky::after { content:""; position:absolute; right:-40px; top:-60px; width:200px; height:200px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.35), transparent 70%); pointer-events:none; }
+  .sky-main { display:flex; align-items:center; gap:14px; min-width:0; }
+  .sky-icon { --mdc-icon-size:54px; color:var(--ink); opacity:.9; flex:none; }
+  .eyebrow { font-size:12px; letter-spacing:.06em; text-transform:uppercase; opacity:.75; font-weight:500; }
+  .temps { display:flex; align-items:baseline; gap:10px; line-height:1.05; margin-top:2px; }
+  .temps .hi { font-size:40px; font-weight:600; letter-spacing:-.02em; }
+  .temps .lo { font-size:22px; opacity:.65; font-weight:500; }
+  .cond { font-size:14px; text-transform:capitalize; opacity:.85; margin-top:2px; }
+  .pills { display:flex; gap:6px; flex-wrap:wrap; position:relative; z-index:1; }
+  .pill { display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:500; padding:5px 11px; border-radius:999px;
+    background:color-mix(in srgb, var(--ink) 12%, transparent); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .pill ha-icon { --mdc-icon-size:16px; }
+
+  .banner { display:flex; gap:10px; align-items:flex-start; padding:10px 14px; border-radius:14px; margin-top:12px; font-size:13.5px;
+    background:color-mix(in srgb, var(--ca-accent) 9%, transparent); line-height:1.4; }
+  .banner ha-icon { --mdc-icon-size:18px; flex:none; color:var(--ca-accent); margin-top:1px; }
+
+  /* outfit tiles: one even, centred row that wraps */
+  .board { display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 180px)); justify-content:center; gap:12px; margin-top:16px; }
+  .tile { position:relative; display:flex; flex-direction:column; border-radius:18px; overflow:hidden;
+    background:var(--card-background-color); border:1px solid var(--ca-line); box-shadow:var(--ca-shadow);
+    transition:transform .2s ease, box-shadow .2s ease; }
+  .tile:hover { transform:translateY(-2px); box-shadow:0 2px 4px rgba(0,0,0,.06), 0 10px 24px rgba(0,0,0,.09); }
+  .tile .img { border-radius:0; }
+  .tile .badge { position:absolute; top:8px; left:8px; font-size:11px; font-weight:600; letter-spacing:.02em;
+    background:color-mix(in srgb, var(--card-background-color) 85%, transparent); color:var(--ca-accent);
+    border:1px solid color-mix(in srgb, var(--ca-accent) 40%, transparent); padding:2px 8px; border-radius:999px;
+    backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+  .tile.removable { border-color:color-mix(in srgb, var(--ca-accent) 45%, var(--ca-line)); }
+  .tile .label { display:flex; flex-direction:column; gap:2px; padding:9px 12px 11px; min-width:0;
+    border-top:1px solid var(--ca-line); }
+  .tile .name { font-size:14px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tile .slot { font-size:11px; color:var(--secondary-text-color); text-transform:uppercase; letter-spacing:.06em; }
+
+  .basics { display:flex; gap:14px; justify-content:center; align-items:center; flex-wrap:wrap; font-size:13px; margin-top:12px; }
+  .basic { display:inline-flex; align-items:center; gap:6px; }
+  .dot { width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); flex:none; }
+
+  .why { margin:14px 0 0; padding:12px 14px 12px 32px; font-size:13.5px; line-height:1.45; color:var(--secondary-text-color);
+    background:var(--ca-surface); border-radius:14px; }
+  .why li { margin-bottom:4px; }
+  .empty { padding:30px 12px; text-align:center; color:var(--secondary-text-color); display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .empty ha-icon { --mdc-icon-size:36px; opacity:.5; }
+
+  .actions { display:flex; gap:4px; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid var(--ca-line); flex-wrap:wrap; }
+  .actions button:not(.primary) { color:var(--secondary-text-color); }
+  .actions button:not(.primary):hover { color:var(--primary-text-color); }
+  .actions button.on { color:var(--ca-accent); background:color-mix(in srgb, var(--ca-accent) 10%, transparent); }
+  .spacer { flex:1; }
+  .worn { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:500; color:var(--success-color, #43a047); padding:0 6px; }
+  .worn ha-icon { --mdc-icon-size:20px; }
+  .small-err { padding:8px 0 0; font-size:13px; }
+
+  /* closet popup */
+  .closet-overlay { position:fixed; inset:0; z-index:998; background:rgba(15,18,24,.5); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:16px; }
+  .closet-dialog { position:relative; width:min(980px, 100%); max-height:92vh; overflow:auto; border-radius:24px;
+    box-shadow:0 20px 60px rgba(0,0,0,.35); background:var(--card-background-color); }
+  .closet-dialog closet-assistant-closet-card { display:block; }
+  .close-x { position:absolute; top:16px; right:16px; z-index:2; padding:7px; background:var(--ca-surface-2); }
+
+  /* sizes */
+  @container (max-width: 400px) {
+    .board { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    .actions { justify-content:center; }
+    .actions .spacer { display:none; }
+    .actions .primary, .actions .worn { order:-1; width:100%; justify-content:center; margin-bottom:6px; padding:10px 14px; }
+    .temps .hi { font-size:34px; }
+    .sky-icon { --mdc-icon-size:44px; }
+    .actions button.small { padding:6px 9px; }
   }
-  /* Medium: hero on the left, everything else on the right */
-  @container (min-width: 600px) {
-    .board { display:grid; grid-template-columns:minmax(0, 1.15fr) minmax(0, 1fr); align-items:start; gap:14px; }
-    .hero { gap:12px; }
-    .smalls { grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:12px; }
-    .basics { grid-column:1 / -1; }
-    .tile.lg .img { aspect-ratio:1 / 1; }
-    .wx-icon { --mdc-icon-size:52px; }
-    .temps .hi { font-size:2.3em; }
-  }
-  /* Wide (full-width dashboards): cap sizes and add breathing room */
   @container (min-width: 900px) {
-    .board { grid-template-columns:minmax(0, 520px) minmax(0, 1fr); }
-    .smalls { grid-template-columns:repeat(auto-fill, minmax(128px, 1fr)); }
-    .tile .name { font-size:15px; }
-    .tile:not(.lg) .name { font-size:14px; }
-    .tile .slot { font-size:12px; }
-    .chip, .why, .banner { font-size:14px; }
+    .board { grid-template-columns:repeat(auto-fit, minmax(150px, 200px)); gap:16px; }
+    .sky { padding:20px 24px; }
+    .temps .hi { font-size:46px; }
   }
 `;
-
 /* ================================================================== MANAGE CLOSET */
 const RATING_FIELDS = [
   ["warmth", "Warmth", "Thin", "Very warm"],
@@ -593,13 +716,16 @@ class ClosetAssistantClosetCard extends HTMLElement {
       <div class="head ${this._config && this._config.in_dialog ? "in-dialog" : ""}">
         <div>
           <div class="title">${esc(title)}</div>
-          <div class="muted stats">${d.counts.total} items · ${d.counts.clean} clean · ${d.counts.dirty} in the hamper · laundry ${esc(weekdayName(d.next_laundry))}</div>
+          <div class="stats muted">
+            <span><b>${d.counts.total}</b> items</span><span><b>${d.counts.clean}</b> clean</span><span><b>${d.counts.dirty}</b> in the hamper</span>
+            <span><ha-icon icon="mdi:washing-machine"></ha-icon>${esc(weekdayName(d.next_laundry))}</span>
+          </div>
         </div>
         <div class="tools">
           <button class="small primary" data-action="add"><ha-icon icon="mdi:plus"></ha-icon>Add</button>
-          <button class="small" data-action="wash-all"><ha-icon icon="mdi:washing-machine"></ha-icon>Wash closet</button>
+          <button class="small outline" data-action="wash-all"><ha-icon icon="mdi:washing-machine"></ha-icon>Wash closet</button>
           <div class="menu-wrap">
-            <button class="small" data-action="menu" title="More"><ha-icon icon="mdi:dots-vertical"></ha-icon></button>
+            <button class="small outline icon-only" data-action="menu" title="More"><ha-icon icon="mdi:dots-vertical"></ha-icon></button>
             ${this._menu ? `<div class="menu">
               <button data-action="import"><ha-icon icon="mdi:upload"></ha-icon>Import JSON</button>
               <button data-action="export"><ha-icon icon="mdi:download"></ha-icon>Export JSON</button>
@@ -609,8 +735,8 @@ class ClosetAssistantClosetCard extends HTMLElement {
         </div>
       </div>
       <div class="filters">
-        <input class="search" type="search" placeholder="Search name, colour, fabric..." value="${esc(this._search)}" data-ui="search">
-        <label class="toggle"><input type="checkbox" data-ui="dirty" ${this._dirtyOnly ? "checked" : ""}> In hamper only</label>
+        <div class="search-wrap"><ha-icon icon="mdi:magnify"></ha-icon><input class="search" type="search" placeholder="Search name, colour, fabric..." value="${esc(this._search)}" data-ui="search"></div>
+        <button class="small outline toggle-chip ${this._dirtyOnly ? "sel" : ""}" data-action="toggle-dirty"><ha-icon icon="mdi:basket-outline"></ha-icon>In hamper${d.counts.dirty ? ` ${d.counts.dirty}` : ""}</button>
       </div>
       ${unworn.length && !reviewing && !this._hideNudge
         ? `<div class="nudge">
@@ -647,8 +773,10 @@ class ClosetAssistantClosetCard extends HTMLElement {
             <div class="item ${i.clean ? "" : "dirty"}" data-action="edit" data-id="${esc(i.id)}">
               ${itemVisual(i, cats)}
               ${i.needs_review ? `<span class="flag">review</span>` : !i.clean ? `<span class="flag hamper">hamper</span>` : i.declutter ? `<span class="flag unworn" title="${esc(unwornText(i))}">unworn</span>` : ""}
-              <div class="name">${esc(i.name)}</div>
-              <div class="sub muted">${pips(i)}<span>${esc(daysAgo(i.last_worn))}</span></div>
+              <div class="meta">
+                <div class="name">${esc(i.name)}</div>
+                <div class="sub muted">${pips(i)}<span>${esc(daysAgo(i.last_worn))}</span></div>
+              </div>
             </div>`).join("")}</div>`
         : `<div class="empty muted">${d.items.length ? "Nothing matches that filter." : "Your closet is empty. Add an item, import a JSON file, or drop images into config/closet_assistant/images and scan."}</div>`}
     `;
@@ -819,6 +947,9 @@ class ClosetAssistantClosetCard extends HTMLElement {
         return this._renderMain();
       case "filter":
         this._filter = el.dataset.cat;
+        return this._renderMain();
+      case "toggle-dirty":
+        this._dirtyOnly = !this._dirtyOnly;
         return this._renderMain();
       case "hide-nudge":
         this._hideNudge = true;
@@ -1038,8 +1169,8 @@ const CLOSET_CSS = `
     background:rgba(0,0,0,.55); color:#fff; padding:3px 10px; border-radius:999px; }
   .hint { font-size:.75em; margin:8px 0; }
   .right { display:flex; flex-direction:column; gap:10px; }
-  label { display:flex; flex-direction:column; gap:4px; font-size:.82em; color:var(--secondary-text-color); }
-  label input, label select { font:inherit; font-size:1rem; padding:7px 10px; border-radius:8px; border:1px solid var(--divider-color);
+  .dialog label { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--secondary-text-color); }
+  .dialog label input, .dialog label select { font:inherit; font-size:1rem; padding:7px 10px; border-radius:8px; border:1px solid var(--divider-color);
     background:var(--card-background-color); color:var(--primary-text-color); }
   input[type=color] { padding:2px; height:38px; width:100%; cursor:pointer; }
   .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -1094,6 +1225,51 @@ const CLOSET_CSS = `
   @container (min-width: 1100px) {
     .grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
   }
+
+  /* ---- visual refresh ---- */
+  .title { font-size:22px; font-weight:600; letter-spacing:-.01em; }
+  .stats { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:13px; margin-top:4px; align-items:center; }
+  .stats b { color:var(--primary-text-color); font-weight:600; }
+  .stats ha-icon { --mdc-icon-size:15px; margin-right:3px; vertical-align:-2px; }
+  .tools { gap:8px; }
+  .icon-only { padding:7px; }
+  .menu { border:1px solid var(--ca-line); border-radius:14px; box-shadow:0 12px 32px rgba(0,0,0,.18); }
+  .filters { margin:16px 0 10px; gap:8px; }
+  .search-wrap { flex:1; min-width:180px; position:relative; display:flex; align-items:center; }
+  .search-wrap ha-icon { position:absolute; left:12px; --mdc-icon-size:19px; color:var(--secondary-text-color); pointer-events:none; }
+  .search { width:100%; padding:9px 14px 9px 38px; border-radius:999px; border:1px solid var(--ca-line); background:var(--ca-surface);
+    color:var(--primary-text-color); font:inherit; font-size:14px; outline:none; transition:border-color .15s, background .15s; }
+  .search:focus { border-color:var(--ca-accent); background:var(--card-background-color); }
+  .toggle-chip.sel, .chip.sel { background:var(--primary-text-color); color:var(--card-background-color); border-color:transparent; }
+  .chips { gap:6px; padding-bottom:8px; scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chip { padding:5px 12px; font-size:13px; border:1px solid var(--ca-line); color:var(--secondary-text-color); }
+  .chip:hover { color:var(--primary-text-color); }
+  .grid { gap:14px; margin-top:10px; }
+  .item { padding:0; border-radius:16px; overflow:hidden; background:var(--card-background-color); border:1px solid var(--ca-line);
+    box-shadow:var(--ca-shadow); transition:transform .2s ease, box-shadow .2s ease; }
+  .item:hover { background:var(--card-background-color); transform:translateY(-2px); box-shadow:0 2px 4px rgba(0,0,0,.06), 0 10px 24px rgba(0,0,0,.09); }
+  .item .img { border-radius:0; border:none; }
+  .item.dirty .img > * { opacity:.4; filter:grayscale(.7); }
+  .item .meta { padding:8px 11px 10px; border-top:1px solid var(--ca-line); }
+  .item .name { margin:0; font-weight:500; }
+  .item .sub { margin-top:3px; flex-wrap:nowrap; white-space:nowrap; }
+  .item .sub > span:last-child { overflow:hidden; text-overflow:ellipsis; }
+  .flag { top:8px; left:8px; right:auto; font-weight:600; letter-spacing:.02em; padding:2px 8px; color:#fff; }
+  .flag.hamper { background:color-mix(in srgb, var(--primary-text-color) 55%, transparent); }
+  .toast { border-radius:12px; font-size:13.5px; }
+  .nudge { border-radius:16px; padding:12px 14px; }
+  .review-row { border-radius:16px; background:var(--card-background-color); box-shadow:var(--ca-shadow); border-color:var(--ca-line); }
+  .review-row .thumb .img { border-radius:12px; }
+  .empty { padding:36px 12px; }
+  .overlay { background:rgba(15,18,24,.5); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+  .dialog { border-radius:24px; padding:22px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+  .dlg-title { font-size:19px; font-weight:600; }
+  .preview .img { border-radius:18px; border:1px solid var(--ca-line); }
+  .dialog label input, .dialog label select { border-radius:10px; border-color:var(--ca-line); background:var(--ca-surface); font-size:15px; }
+  .dialog label input:focus, .dialog label select:focus { outline:none; border-color:var(--ca-accent); }
+  .dlg-actions { border-top:1px solid var(--ca-line); padding-top:14px; }
+  .dlg-actions button:not(.primary):not(.danger) { border-color:var(--ca-line); }
 `;
 
 /*
