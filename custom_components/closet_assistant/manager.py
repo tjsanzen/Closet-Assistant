@@ -25,6 +25,7 @@ from .const import (
     CONF_LAUNDRY_TIME,
     CONF_LAUNDRY_WEEKS,
     CONF_DECLUTTER_DAYS,
+    CONF_EVERYDAY_DRESSINESS,
     CONF_LAYER_THRESHOLD,
     CONF_SUGGESTION_TIME,
     CONF_TEMP_SENSITIVITY,
@@ -49,10 +50,12 @@ from .models import (
     FABRICS,
     PATTERN_SCALES,
     PATTERNS,
+    RELEVANT_RATINGS,
     effective_max_wears,
     guess_category_from_filename,
     is_seasonal,
     normalize_item,
+    suggestion_table,
     tracks_cleanliness,
     wears_remaining,
 )
@@ -99,6 +102,7 @@ class ClosetManager:
             "suggestion_time": merged[CONF_SUGGESTION_TIME],
             "temperature_sensitivity": float(merged[CONF_TEMP_SENSITIVITY]),
             "declutter_days": int(merged.get(CONF_DECLUTTER_DAYS, 180)),
+            "everyday_dressiness": int(merged.get(CONF_EVERYDAY_DRESSINESS, 5)),
             "layering_threshold": threshold,
             "layering_threshold_f": threshold * 1.8 if unit == "°C" else threshold,
             "unit": unit,
@@ -442,6 +446,85 @@ class ClosetManager:
             await self._commit()
         return added
 
+    # ------------------------------------------------------------------ manual swaps
+    SWAP_OPTIONAL = ("mid", "outer", "shoes", "belt", "hat", "accessory")
+
+    def _make_engine(self) -> OutfitEngine:
+        return OutfitEngine(
+            list(self.items.values()),
+            self.settings,
+            self.weather or {"high_f": 68, "low_f": 55},
+            dt_util.now().date(),
+            history=self.history,
+            rng=random.Random(),
+            unit=self.unit,
+        )
+
+    def _today_pieces(self) -> dict[str, dict[str, Any]]:
+        pieces = {}
+        for entry in (self.today or {}).get("items", []):
+            item = self.items.get(entry["id"])
+            if item:
+                pieces[entry["slot"]] = item
+        return pieces
+
+    async def async_swap_options(self, slot: str) -> dict[str, Any]:
+        """Every other item that could fill this slot, each pre-checked against today."""
+        pieces = self._today_pieces()
+        if not pieces:
+            raise HomeAssistantError("There is no outfit to change yet")
+        current = pieces.get(slot)
+        engine = self._make_engine()
+        engine.jitter = False
+
+        def _build() -> dict[str, Any]:
+            options = []
+            for item in self.items.values():
+                if CATEGORIES[item["category"]]["slot"] != slot or (current and item["id"] == current["id"]):
+                    continue
+                trial = {**pieces, slot: item}
+                options.append({"item": self.item_view(item), "issues": engine.issues(trial)})
+            if slot in self.SWAP_OPTIONAL and current:
+                trial = {k: v for k, v in pieces.items() if k != slot}
+                options.append({"item": None, "issues": engine.issues(trial)})
+            # cleanest matches first, then fewest problems, then least recently worn
+            options.sort(key=lambda o: (
+                len(o["issues"]),
+                o["item"] is None,
+                (o["item"] or {}).get("last_worn") or "0000",
+            ))
+            return {
+                "slot": slot,
+                "current": self.item_view(current) if current else None,
+                "current_issues": engine.issues(pieces),
+                "options": options,
+            }
+
+        return await self.hass.async_add_executor_job(_build)
+
+    async def async_swap(self, slot: str, item_id: str | None) -> None:
+        """Replace (or remove) one piece of today's outfit by hand."""
+        if not self.today or not self.today.get("items"):
+            raise HomeAssistantError("There is no outfit to change yet")
+        if self.today.get("worn"):
+            raise HomeAssistantError("Today's outfit is already logged as worn")
+        pieces = self._today_pieces()
+        if item_id is None:
+            if slot not in self.SWAP_OPTIONAL:
+                raise HomeAssistantError("Every outfit needs a top and a bottom")
+            pieces.pop(slot, None)
+        else:
+            item = self.items.get(item_id)
+            if item is None or CATEGORIES[item["category"]]["slot"] != slot:
+                raise HomeAssistantError("That item doesn't fit there")
+            pieces[slot] = item
+        engine = self._make_engine()
+        result = await self.hass.async_add_executor_job(engine.evaluate, pieces)
+        result["date"] = self.today.get("date", result["date"])
+        result["swapped"] = True
+        self.today = result
+        await self._commit()
+
     # ------------------------------------------------------------------ declutter
     def unworn_info(self, item: dict[str, Any]) -> dict[str, Any]:
         """How long since this item was worn, and whether to suggest letting it go."""
@@ -459,7 +542,8 @@ class ClosetManager:
             "unworn_days": days,
             "never_worn": not item.get("last_worn"),
             "seasonal": seasonal,
-            "declutter": bool(limit) and days >= threshold and not kept,
+            # around-the-house pieces are never suggested, so "unworn" means nothing for them
+            "declutter": bool(limit) and days >= threshold and not kept and not item.get("home_only"),
         }
 
     def declutter_items(self) -> list[dict[str, Any]]:
@@ -509,6 +593,7 @@ class ClosetManager:
             "dirty": len(dirty),
             "clean": len(self.items) - len(dirty),
             "declutter": len(self.declutter_items()),
+            "home_only": sum(1 for i in self.items.values() if i.get("home_only")),
         }
 
     def snapshot(self) -> dict[str, Any]:
@@ -526,6 +611,7 @@ class ClosetManager:
                 "laundry_every_weeks": s["laundry_every_weeks"],
                 "weather_entity": s["weather_entity"],
                 "declutter_days": s["declutter_days"],
+                "everyday_dressiness": s["everyday_dressiness"],
             },
             "last_wash": self.last_wash,
             "next_laundry": self.next_laundry_day(),
@@ -533,4 +619,6 @@ class ClosetManager:
             "patterns": {k: v["label"] for k, v in PATTERNS.items()},
             "pattern_scales": PATTERN_SCALES,
             "fabrics": FABRICS,
+            "suggested": suggestion_table(),
+            "relevant_ratings": RELEVANT_RATINGS,
         }

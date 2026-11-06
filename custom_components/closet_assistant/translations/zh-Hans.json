@@ -13,14 +13,16 @@
           "suggestion_time": "每天早晨新穿搭生成时间",
           "temperature_sensitivity": "温度敏感度",
           "layering_threshold": "当最高温与最低温差达到（度）时进行叠穿",
-          "declutter_days": "建议清理前的未穿天数"
+          "declutter_days": "建议清理前的未穿天数",
+          "everyday_dressiness": "日常正式程度"
         },
         "data_description": {
           "wears_per_wash": "清洗之间的基础穿着次数。毛衣、裤子和夹克会按此数值成倍计算；内衣和袜子始终为 1。你可以覆盖任何单品。",
           "laundry_time": "在洗衣日的这个时间，所有单品将重新标记为干净。",
           "temperature_sensitivity": "怕冷为正数（穿得更暖和），怕热为负数。",
           "layering_threshold": "当温差较大时，会搭配可在下午脱掉的叠穿造型。",
-          "declutter_days": "超过此天数未穿的衣物会显示在“最近未穿”中。大衣、短裤等季节性衣物始终至少保留一年。设为 0 可关闭此功能。"
+          "declutter_days": "超过此天数未穿的衣物会显示在“最近未穿”中。大衣、短裤等季节性衣物始终至少保留一年。设为 0 可关闭此功能。",
+          "everyday_dressiness": "日常穿搭的正式程度：1 = 居家服，5 = 休闲，7 = 商务休闲 / 办公，10 = 面试或教堂。以后可以通过日历事件按天设置。"
         }
       }
     },
@@ -44,10 +46,12 @@
           "suggestion_time": "每天早晨新穿搭生成时间",
           "temperature_sensitivity": "温度敏感度",
           "layering_threshold": "当最高温与最低温差达到（度）时进行叠穿",
-          "declutter_days": "建议清理前的未穿天数"
+          "declutter_days": "建议清理前的未穿天数",
+          "everyday_dressiness": "日常正式程度"
         },
         "data_description": {
-          "declutter_days": "超过此天数未穿的衣物会显示在“最近未穿”中。大衣、短裤等季节性衣物始终至少保留一年。设为 0 可关闭此功能。"
+          "declutter_days": "超过此天数未穿的衣物会显示在“最近未穿”中。大衣、短裤等季节性衣物始终至少保留一年。设为 0 可关闭此功能。",
+          "everyday_dressiness": "日常穿搭的正式程度：1 = 居家服，5 = 休闲，7 = 商务休闲 / 办公，10 = 面试或教堂。以后可以通过日历事件按天设置。"
         }
       }
     },

@@ -13,14 +13,16 @@
           "suggestion_time": "Nouvelle tenue chaque matin à",
           "temperature_sensitivity": "Sensibilité à la température",
           "layering_threshold": "Superposer les couches lorsque max moins min est d'au moins (degrés)",
-          "declutter_days": "Suggérer de se séparer après (jours sans porter)"
+          "declutter_days": "Suggérer de se séparer après (jours sans porter)",
+          "everyday_dressiness": "Niveau d'élégance au quotidien"
         },
         "data_description": {
           "wears_per_wash": "Port de base entre les lavages. Les pulls, pantalons et vestes reçoivent un multiple de ceci ; les sous-vêtements et les chaussettes sont toujours à 1. Vous pouvez remplacer n'importe quel article.",
           "laundry_time": "À cette heure-ci les jours de lessive, chaque article est à nouveau marqué comme propre.",
           "temperature_sensitivity": "Positif si vous êtes frileux (vous habille plus chaudement), négatif si vous avez chaud.",
           "layering_threshold": "De grandes amplitudes thermiques quotidiennes entraînent une tenue superposée que vous pourrez alléger dans l'après-midi.",
-          "declutter_days": "Les vêtements non portés depuis ce nombre de jours apparaissent dans « Pas porté récemment ». Les manteaux, shorts et autres pièces de saison ont toujours au moins un an. 0 désactive la fonction."
+          "declutter_days": "Les vêtements non portés depuis ce nombre de jours apparaissent dans « Pas porté récemment ». Les manteaux, shorts et autres pièces de saison ont toujours au moins un an. 0 désactive la fonction.",
+          "everyday_dressiness": "À quel point ta tenue du jour doit être habillée : 1 = tenue d'intérieur, 5 = décontracté, 7 = smart casual / bureau, 10 = entretien ou église. Plus tard, les événements du calendrier pourront le régler pour chaque jour."
         }
       }
     },
@@ -44,10 +46,12 @@
           "suggestion_time": "Nouvelle tenue chaque matin à",
           "temperature_sensitivity": "Sensibilité à la température",
           "layering_threshold": "Superposer les couches lorsque max moins min est d'au moins (degrés)",
-          "declutter_days": "Suggérer de se séparer après (jours sans porter)"
+          "declutter_days": "Suggérer de se séparer après (jours sans porter)",
+          "everyday_dressiness": "Niveau d'élégance au quotidien"
         },
         "data_description": {
-          "declutter_days": "Les vêtements non portés depuis ce nombre de jours apparaissent dans « Pas porté récemment ». Les manteaux, shorts et autres pièces de saison ont toujours au moins un an. 0 désactive la fonction."
+          "declutter_days": "Les vêtements non portés depuis ce nombre de jours apparaissent dans « Pas porté récemment ». Les manteaux, shorts et autres pièces de saison ont toujours au moins un an. 0 désactive la fonction.",
+          "everyday_dressiness": "À quel point ta tenue du jour doit être habillée : 1 = tenue d'intérieur, 5 = décontracté, 7 = smart casual / bureau, 10 = entretien ou église. Plus tard, les événements du calendrier pourront le régler pour chaque jour."
         }
       }
     },

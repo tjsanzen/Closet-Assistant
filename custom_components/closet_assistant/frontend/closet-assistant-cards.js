@@ -4,7 +4,7 @@
  *   custom:closet-assistant-closet-card  - "Manage Closet"
  * Served and auto-loaded by the closet_assistant integration. No build step.
  */
-const CA_VERSION = "0.5.0";
+const CA_VERSION = "0.7.0";
 const DOMAIN = "closet_assistant";
 
 /* ------------------------------------------------------------------ shared store */
@@ -182,7 +182,7 @@ function itemVisual(item, categories) {
   if (item.image_url) {
     const fit = caImageFit.get(item.image_url) || "";
     return `<div class="img ${fit}" style="--c:${esc(item.color)}">
-        <img src="${esc(item.image_url)}" alt="${esc(item.name)}" loading="lazy" data-fit>
+        <img src="${esc(item.image_url)}" alt="${esc(item.name)}" loading="lazy" draggable="false" data-fit>
       </div>`;
   }
   return `<div class="img drawn" style="--c:${esc(item.color)}">${garmentArt(item)}</div>`;
@@ -349,11 +349,14 @@ class ClosetAssistantTodayCard extends HTMLElement {
     this._busy = false;
     this._showWhy = false;
     this.shadowRoot.innerHTML = `<style>${SHARED_CSS}${TODAY_CSS}</style>
-      <ha-card id="main"></ha-card><div id="closetModal"></div>`;
+      <ha-card id="main"></ha-card><div id="closetModal"></div><div id="swapModal"></div>`;
     this.$main = this.shadowRoot.getElementById("main");
     this.$closet = this.shadowRoot.getElementById("closetModal");
+    this.$swap = this.shadowRoot.getElementById("swapModal");
     this.shadowRoot.addEventListener("click", (e) => this._onClick(e));
+    this._bindPress();
     this._onKey = (e) => {
+      if (e.key === "Escape" && this._swap) return this._closeSwap();
       if (e.key === "Escape" && this._closetEl && !(typeof this._closetEl.hasOpenDialog === "function" && this._closetEl.hasOpenDialog())) this._closeCloset();
     };
   }
@@ -400,10 +403,152 @@ class ClosetAssistantTodayCard extends HTMLElement {
     if (!this._closetEl) return;
     this._closetEl = null;
     this.$closet.innerHTML = "";
-    window.removeEventListener("keydown", this._onKey);
+    if (!this._swap) window.removeEventListener("keydown", this._onKey);
+  }
+
+  /* ---------------------------------------------------------- swap a piece
+   * Long-press (touch) or right-click (mouse) a tile to see every other item that
+   * could take its place, each pre-checked against today's weather and outfit.
+   */
+  _bindPress() {
+    const root = this.shadowRoot;
+    const cancel = () => {
+      if (!this._press) return;
+      clearTimeout(this._press.timer);
+      this._press.tile.classList.remove("pressing");
+      this._press = null;
+    };
+    root.addEventListener("contextmenu", (e) => {
+      const tile = e.target.closest && e.target.closest(".tile[data-slot]");
+      if (!tile) return;
+      e.preventDefault();
+      cancel();
+      this._openSwap(tile.dataset.slot);
+    });
+    root.addEventListener("pointerdown", (e) => {
+      const tile = e.target.closest && e.target.closest(".tile[data-slot]");
+      if (!tile || e.pointerType === "mouse") return;
+      cancel();
+      const slot = tile.dataset.slot;
+      tile.classList.add("pressing");
+      this._press = {
+        x: e.clientX, y: e.clientY, tile,
+        timer: setTimeout(() => {
+          cancel();
+          if (navigator.vibrate) navigator.vibrate(12);
+          // the finger lifting off would "click" whatever is under it in the new sheet
+          this._suppressClick = true;
+          setTimeout(() => (this._suppressClick = false), 600);
+          this._openSwap(slot);
+        }, 480),
+      };
+    });
+    root.addEventListener("pointermove", (e) => {
+      if (this._press && Math.hypot(e.clientX - this._press.x, e.clientY - this._press.y) > 10) cancel();
+    });
+    root.addEventListener("pointerup", cancel);
+    root.addEventListener("pointercancel", cancel);
+  }
+
+  async _openSwap(slot) {
+    const t = caStore.data && caStore.data.today;
+    if (!t || !t.items || !t.items.length) return;
+    if (this._swap && this._swap.slot === slot) return;
+    if (t.worn) {
+      this._toast = "Today's outfit is already logged as worn.";
+      return this._render();
+    }
+    this._swap = { slot, loading: true };
+    window.addEventListener("keydown", this._onKey);
+    this._renderSwap();
+    try {
+      const data = await ws(this._hass, "swap/options", { slot });
+      if (this._swap && this._swap.slot === slot) this._swap = { slot, data };
+    } catch (err) {
+      if (this._swap) this._swap = { slot, error: err.message || String(err) };
+    }
+    this._renderSwap();
+  }
+
+  _closeSwap() {
+    this._swap = null;
+    this.$swap.innerHTML = "";
+    if (!this._closetEl) window.removeEventListener("keydown", this._onKey);
+  }
+
+  async _applySwap(option) {
+    this._swap = { ...this._swap, busy: true };
+    this._renderSwap();
+    try {
+      await ws(this._hass, "swap", { slot: this._swap.slot, item_id: option.item ? option.item.id : null });
+      this._closeSwap();
+    } catch (err) {
+      this._swap = { ...this._swap, busy: false, error: err.message || String(err) };
+      this._renderSwap();
+    }
+  }
+
+  _renderSwap() {
+    const sw = this._swap;
+    if (!sw) return (this.$swap.innerHTML = "");
+    const cats = caStore.data ? caStore.data.categories : {};
+    const label = SLOT_LABELS[sw.slot] || "item";
+    const current = sw.data && sw.data.current;
+    let body;
+    if (sw.loading) {
+      body = `<div class="sheet-msg muted">Checking your closet...</div>`;
+    } else if (sw.error && !sw.data) {
+      body = `<div class="sheet-msg err">${esc(sw.error)}</div>`;
+    } else if (sw.confirm !== undefined) {
+      const opt = sw.data.options[sw.confirm];
+      body = `
+        <div class="warn">
+          <div class="warn-head"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><div>Are you sure you want to wear this?</div></div>
+          <div class="warn-pick">
+            ${opt.item ? `<div class="mini">${itemVisual(opt.item, cats)}</div>` : `<div class="mini none"><ha-icon icon="mdi:close-circle-outline"></ha-icon></div>`}
+            <div class="warn-name">${opt.item ? esc(opt.item.name) : `Go without ${/^[aeiou]/i.test(label) ? "an" : "a"} ${esc(label.toLowerCase())}`}</div>
+          </div>
+          <ul class="reasons">${opt.issues.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+          ${sw.error ? `<div class="err small-err">${esc(sw.error)}</div>` : ""}
+          <div class="sheet-actions">
+            <button class="small outline" data-action="swap-back"><ha-icon icon="mdi:arrow-left"></ha-icon>Pick something else</button>
+            <button class="small primary" data-action="swap-apply" data-i="${sw.confirm}" ${sw.busy ? "disabled" : ""}>Wear it anyway</button>
+          </div>
+        </div>`;
+    } else {
+      const opts = sw.data.options;
+      body = opts.length
+        ? `<div class="opt-grid">${opts.map((o, i) => `
+            <button class="opt ${o.issues.length ? "has-issues" : "good"}" data-action="swap-pick" data-i="${i}" ${sw.busy ? "disabled" : ""}
+              title="${esc(o.issues.length ? o.issues.join("\n") : "Good match")}">
+              ${o.item ? itemVisual(o.item, cats) : `<div class="img none"><ha-icon icon="mdi:close-circle-outline"></ha-icon></div>`}
+              <span class="opt-name">${o.item ? esc(o.item.name) : "Go without"}</span>
+              <span class="opt-status">${o.issues.length
+                ? `<ha-icon icon="mdi:alert-outline"></ha-icon>${o.issues.length === 1 ? "1 concern" : `${o.issues.length} concerns`}`
+                : `<ha-icon icon="mdi:check-circle-outline"></ha-icon>Good match`}</span>
+            </button>`).join("")}</div>
+           ${sw.error ? `<div class="err small-err">${esc(sw.error)}</div>` : ""}`
+        : `<div class="sheet-msg muted">There's nothing else in your closet that can be ${/^[aeiou]/i.test(label) ? "an" : "a"} ${esc(label.toLowerCase())}.</div>`;
+    }
+    this.$swap.innerHTML = `<div class="overlay sheet-overlay" data-action="swap-close">
+        <div class="sheet" data-stop role="dialog" aria-label="Swap ${esc(label)}">
+          <div class="sheet-grab"></div>
+          <div class="sheet-head">
+            <div><div class="eyebrow">Swap ${esc(label.toLowerCase())}</div>
+              <div class="sheet-title">${current ? `Instead of ${esc(current.name)}` : esc(label)}</div></div>
+            <button class="small close-sheet" data-action="swap-close" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+          </div>
+          ${body}
+        </div>
+      </div>`;
+    caFitImages(this.$swap);
   }
 
   async _onClick(e) {
+    if (this._suppressClick) {
+      this._suppressClick = false;
+      return;
+    }
     const btn = e.target.closest("[data-action]");
     if (!btn) return;
     const action = btn.dataset.action;
@@ -413,6 +558,26 @@ class ClosetAssistantTodayCard extends HTMLElement {
       return this._closeCloset();
     }
     if (action === "open-closet") return this._openCloset();
+    if (action === "swap-close") {
+      if (btn.classList.contains("overlay") && e.composedPath().some((n) => n.dataset && n.dataset.stop !== undefined)) return;
+      return this._closeSwap();
+    }
+    if (action === "swap-pick" && this._swap && this._swap.data) {
+      const opt = this._swap.data.options[Number(btn.dataset.i)];
+      if (opt.issues.length) {
+        this._swap = { ...this._swap, confirm: Number(btn.dataset.i), error: null };
+        return this._renderSwap();
+      }
+      return this._applySwap(opt);
+    }
+    if (action === "swap-back" && this._swap) {
+      const { confirm, ...rest } = this._swap;
+      this._swap = { ...rest, error: null };
+      return this._renderSwap();
+    }
+    if (action === "swap-apply" && this._swap && this._swap.data) {
+      return this._applySwap(this._swap.data.options[Number(btn.dataset.i)]);
+    }
     if (action === "why") {
       this._showWhy = !this._showWhy;
       return this._render();
@@ -431,7 +596,7 @@ class ClosetAssistantTodayCard extends HTMLElement {
   }
 
   _tile(item, cats) {
-    return `<div class="tile ${item.removable ? "removable" : ""}" style="--c:${esc(item.color)}" title="${esc(item.name)}">
+    return `<div class="tile ${item.removable ? "removable" : ""}" data-slot="${esc(item.slot)}" style="--c:${esc(item.color)}" title="${esc(item.name)}">
       ${itemVisual(item, cats)}
       ${item.removable ? `<span class="badge">Shed later</span>` : ""}
       <div class="label"><span class="name">${esc(item.name)}</span><span class="slot">${esc(SLOT_LABELS[item.slot] || "")}</span></div>
@@ -483,6 +648,7 @@ class ClosetAssistantTodayCard extends HTMLElement {
           : ""}
         ${items.length
           ? `<div class="board">${tiles.map((s) => this._tile(by[s], cats)).join("")}</div>
+             ${!t.worn ? `<div class="swap-hint muted"><ha-icon icon="mdi:gesture-tap-hold"></ha-icon>Long-press or right-click an item to swap it</div>` : ""}
              ${basics.length ? `<div class="basics"><span class="muted">Plus</span>${basics.map((s) => `<span class="basic"><span class="dot" style="background:${esc(by[s].color)}"></span>${esc(by[s].name)}</span>`).join("")}</div>` : ""}`
           : `<div class="empty"><ha-icon icon="mdi:hanger"></ha-icon><div>${esc((t.notes || [])[0] || "No outfit yet. Add a few clothes to your closet to get started.")}</div></div>`}
         ${this._showWhy && t.notes && t.notes.length ? `<ul class="why">${t.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
@@ -617,6 +783,53 @@ const TODAY_CSS = `
   .closet-dialog closet-assistant-closet-card { display:block; }
   .close-x { position:absolute; top:16px; right:16px; z-index:2; padding:7px; background:var(--ca-surface-2); }
 
+  /* swap: long-press / right-click */
+  .tile { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; cursor:context-menu; }
+  .tile.pressing { transform:scale(.95); transition:transform .45s ease; box-shadow:0 0 0 3px color-mix(in srgb, var(--ca-accent) 35%, transparent); }
+  .swap-hint { display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; margin-top:10px; }
+  .swap-hint ha-icon { --mdc-icon-size:15px; }
+  .sheet-overlay { position:fixed; inset:0; z-index:999; background:rgba(15,18,24,.45); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+    display:flex; align-items:center; justify-content:center; padding:16px; animation:ca-fade .15s ease; }
+  .sheet { position:relative; width:min(640px, 100%); max-height:86vh; overflow:auto; background:var(--card-background-color);
+    color:var(--primary-text-color); border-radius:24px; padding:18px 20px 20px; box-shadow:0 20px 60px rgba(0,0,0,.35); animation:ca-rise .2s ease; }
+  .sheet-grab { display:none; }
+  .sheet-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+  .sheet-head .eyebrow { opacity:1; color:var(--secondary-text-color); }
+  .sheet-title { font-size:18px; font-weight:600; margin-top:2px; }
+  .close-sheet { padding:7px; background:var(--ca-surface-2); flex:none; }
+  .sheet-msg { padding:28px 8px; text-align:center; font-size:14px; }
+  .opt-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(118px, 1fr)); gap:10px; }
+  .opt { display:flex; flex-direction:column; align-items:stretch; gap:0; padding:0; border-radius:16px; overflow:hidden; text-align:left;
+    border:1px solid var(--ca-line); background:var(--card-background-color); box-shadow:var(--ca-shadow); }
+  .opt:hover { background:var(--card-background-color); transform:translateY(-2px); }
+  .opt .img { border-radius:0; }
+  .opt .img.none { color:var(--secondary-text-color); }
+  .opt .img.none ha-icon { --mdc-icon-size:40%; opacity:.6; }
+  .opt-name { font-size:13px; font-weight:500; padding:8px 10px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .opt-status { display:flex; align-items:center; gap:4px; font-size:11.5px; font-weight:500; padding:3px 10px 9px; }
+  .opt-status ha-icon { --mdc-icon-size:14px; }
+  .opt.good .opt-status { color:var(--success-color, #43a047); }
+  .opt.has-issues .opt-status { color:var(--warning-color, #ffa600); }
+  .warn-head { display:flex; align-items:center; gap:10px; font-size:17px; font-weight:600; }
+  .warn-head ha-icon { --mdc-icon-size:26px; color:var(--warning-color, #ffa600); flex:none; }
+  .warn-pick { display:flex; align-items:center; gap:12px; margin:14px 0 8px; padding:8px; border-radius:14px; background:var(--ca-surface); }
+  .mini { width:64px; flex:none; }
+  .mini .img { border-radius:12px; }
+  .mini.none { height:64px; display:flex; align-items:center; justify-content:center; color:var(--secondary-text-color); }
+  .warn-name { font-weight:500; font-size:15px; }
+  .reasons { margin:8px 0 0; padding-left:20px; font-size:14px; line-height:1.45; }
+  .reasons li { margin-bottom:6px; }
+  .sheet-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:16px; }
+  @keyframes ca-fade { from { opacity:0; } }
+  @keyframes ca-rise { from { transform:translateY(12px); opacity:.6; } }
+  @media (max-width: 600px) {
+    .sheet-overlay { align-items:flex-end; padding:0; }
+    .sheet { width:100%; border-radius:24px 24px 0 0; max-height:82vh; padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
+    .sheet-grab { display:block; width:40px; height:4px; border-radius:2px; background:var(--ca-line); margin:-6px auto 12px; }
+    .opt-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .sheet-actions button { flex:1; justify-content:center; padding:10px 12px; }
+  }
+
   /* sizes */
   @container (max-width: 400px) {
     .board { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
@@ -640,7 +853,9 @@ const RATING_FIELDS = [
   ["form_fit", "Form fit", "Loose / oversized", "Tight / fitted"],
   ["uv", "UV protection", "Sheer", "UPF 50+"],
   ["structure", "Structure", "Fluid / drapey", "Rigid / tailored"],
+  ["dressiness", "Quality / dressiness", "Lounge / worn-in", "Interview / church"],
 ];
+const RATING_KEYS = RATING_FIELDS.map((f) => f[0]);
 
 class ClosetAssistantClosetCard extends HTMLElement {
   constructor() {
@@ -706,7 +921,7 @@ class ClosetAssistantClosetCard extends HTMLElement {
     const unworn = d.items.filter((i) => i.declutter).sort((a, b) => b.unworn_days - a.unworn_days);
     if (reviewing && !unworn.length) this._filter = "all";
     const items = d.items
-      .filter((i) => this._filter === "all" || i.category === this._filter)
+      .filter((i) => this._filter === "all" || (this._filter === "home" ? i.home_only : i.category === this._filter))
       .filter((i) => !this._dirtyOnly || !i.clean)
       .filter((i) => !q || `${i.name} ${i.color_name} ${i.pattern} ${i.fabric || ""}`.toLowerCase().includes(q))
       .sort((a, b) => Object.keys(cats).indexOf(a.category) - Object.keys(cats).indexOf(b.category) || a.name.localeCompare(b.name));
@@ -749,6 +964,7 @@ class ClosetAssistantClosetCard extends HTMLElement {
         : ""}
       <div class="chips">
         <button class="chip ${this._filter === "all" ? "sel" : ""}" data-action="filter" data-cat="all">All ${d.items.length}</button>
+        ${d.counts.home_only ? `<button class="chip unworn-chip ${this._filter === "home" ? "sel" : ""}" data-action="filter" data-cat="home"><ha-icon icon="mdi:sofa-outline"></ha-icon>At home ${d.counts.home_only}</button>` : ""}
         ${unworn.length ? `<button class="chip unworn-chip ${reviewing ? "sel" : ""}" data-action="filter" data-cat="unworn"><ha-icon icon="mdi:hanger-off"></ha-icon>Unworn ${unworn.length}</button>` : ""}
         ${Object.entries(cats).filter(([k]) => counts[k]).map(([k, m]) =>
           `<button class="chip ${this._filter === k ? "sel" : ""}" data-action="filter" data-cat="${k}">${esc(m.label.split(" (")[0])} ${counts[k]}</button>`).join("")}
@@ -772,7 +988,7 @@ class ClosetAssistantClosetCard extends HTMLElement {
         ? `<div class="grid">${items.map((i) => `
             <div class="item ${i.clean ? "" : "dirty"}" data-action="edit" data-id="${esc(i.id)}">
               ${itemVisual(i, cats)}
-              ${i.needs_review ? `<span class="flag">review</span>` : !i.clean ? `<span class="flag hamper">hamper</span>` : i.declutter ? `<span class="flag unworn" title="${esc(unwornText(i))}">unworn</span>` : ""}
+              ${i.needs_review ? `<span class="flag">review</span>` : !i.clean ? `<span class="flag hamper">hamper</span>` : i.home_only ? `<span class="flag home" title="Around the house only">home</span>` : i.declutter ? `<span class="flag unworn" title="${esc(unwornText(i))}">unworn</span>` : ""}
               <div class="meta">
                 <div class="name">${esc(i.name)}</div>
                 <div class="sub muted">${pips(i)}<span>${esc(daysAgo(i.last_worn))}</span></div>
@@ -818,6 +1034,9 @@ class ClosetAssistantClosetCard extends HTMLElement {
     const cats = d.categories;
     const solid = dr.pattern === "solid";
     const defMax = this._defaultMax(dr);
+    const relevant = (d.relevant_ratings || {})[dr.category];
+    const shownRatings = relevant ? RATING_FIELDS.filter(([f]) => relevant.includes(f)) : RATING_FIELDS;
+    const catLabel = ((cats[dr.category] || {}).label || "this item").split(" (")[0];
     this.$modal.innerHTML = `<div class="overlay" data-action="close"><div class="dialog" data-stop>
       <div class="dlg-title">${dr.id ? "Edit item" : "Add item"}</div>
       <div class="editor">
@@ -849,14 +1068,23 @@ class ClosetAssistantClosetCard extends HTMLElement {
               ${d.pattern_scales.map((s) => `<option value="${s}" ${s === dr.pattern_scale ? "selected" : ""}>${s}</option>`).join("")}
             </select></label>`}
           </div>
-          <label>Fabric<select data-field="fabric">
+          <label>Fabric<select data-field="fabric" data-rerender>
             <option value="">Not set</option>
             ${d.fabrics.map((f) => `<option value="${f}" ${f === dr.fabric ? "selected" : ""}>${f}</option>`).join("")}
           </select></label>
-          ${RATING_FIELDS.map(([f, label, lo, hi]) => `
-            <div class="rating"><div class="rl"><span>${label}</span><b data-val="${f}">${dr[f]}</b></div>
+          <div class="ratings-head">
+            <span class="muted">${shownRatings.length ? `Ratings start from typical values for ${esc(catLabel.toLowerCase())}${dr.fabric ? ` in ${esc(dr.fabric)}` : ""}.` : `Ratings don't affect outfit picks for ${esc(catLabel.toLowerCase())}.`}</span>
+            ${shownRatings.length && dr.id ? `<button class="small outline" data-action="suggest" title="Reset the sliders to the typical values"><ha-icon icon="mdi:auto-fix"></ha-icon>Use typical</button>` : ""}
+          </div>
+          ${shownRatings.map(([f, label, lo, hi]) => `
+            <div class="rating ${f === "dressiness" ? "dress" : ""}"><div class="rl"><span>${label}</span><b data-val="${f}">${dr[f]}</b></div>
               <input type="range" min="1" max="10" step="1" data-field="${f}" data-num value="${dr[f]}">
               <div class="ends muted"><span>${lo}</span><span>${hi}</span></div></div>`).join("")}
+          <label class="switch-row">
+            <input type="checkbox" data-field="home_only" data-bool ${dr.home_only ? "checked" : ""}>
+            <span class="switch" aria-hidden="true"></span>
+            <span class="switch-text"><b>Around the house only</b><span class="muted">Pajamas, loungewear, comfy favourites. Kept in your closet but never suggested for going out.</span></span>
+          </label>
           ${defMax !== null ? `
           <div class="two">
             <label>Wears between washes<input type="number" min="1" max="30" data-field="max_wears" data-num value="${dr.max_wears ?? ""}" placeholder="Default ${defMax}"></label>
@@ -882,12 +1110,31 @@ class ClosetAssistantClosetCard extends HTMLElement {
   }
 
   _newDraft() {
-    return {
-      name: "", category: this._filter !== "all" ? this._filter : "short_sleeve_shirt", color: "#808080",
-      accent_colors: [], pattern: "solid", pattern_scale: null, fabric: "", warmth: 3, waterproof: 1,
-      form_fit: 5, uv: 3, structure: 5, max_wears: null, last_worn: null, notes: "", image: null, image_url: null,
-      _colorTouched: false,
+    const cats = caStore.data.categories;
+    const category = cats[this._filter] ? this._filter : "short_sleeve_shirt";
+    const dr = {
+      name: "", category, color: "#808080", accent_colors: [], pattern: "solid", pattern_scale: null, fabric: "",
+      warmth: 3, waterproof: 1, form_fit: 5, uv: 3, structure: 5, dressiness: 5, home_only: false,
+      max_wears: null, last_worn: null, notes: "", image: null, image_url: null,
+      _colorTouched: false, _touched: new Set(),
     };
+    this._applySuggested(dr, { fabric: true });
+    return dr;
+  }
+
+  /* Fill sliders from the category + fabric suggestion table. On a new item only the
+     sliders you haven't moved are changed; "Use typical" (force) resets them all. */
+  _applySuggested(dr, { force = false, fabric = false } = {}) {
+    const table = (caStore.data && caStore.data.suggested) || {};
+    const entry = table[dr.category];
+    if (!entry) return;
+    const touched = dr._touched || new Set();
+    if (fabric && !touched.has("fabric") && !dr.id) dr.fabric = entry.fabric || "";
+    const vals = entry.by_fabric[dr.fabric || ""] || entry.by_fabric[""];
+    for (const k of RATING_KEYS) {
+      if (vals[k] === undefined) continue;
+      if (force || !touched.has(k)) dr[k] = vals[k];
+    }
   }
 
   /* ---------------------------------------------------------- events */
@@ -907,8 +1154,10 @@ class ClosetAssistantClosetCard extends HTMLElement {
     if (!f) return;
     let v = t.value;
     if (t.dataset.num !== undefined) v = v === "" ? null : Number(v);
+    if (t.dataset.bool !== undefined) v = t.checked;
     this._draft[f] = v;
     if (f === "color") this._draft._colorTouched = true;
+    if (RATING_KEYS.includes(f)) (this._draft._touched ||= new Set()).add(f);
     const label = this.$modal.querySelector(`[data-val="${f}"]`);
     if (label) label.textContent = v;
   }
@@ -922,8 +1171,11 @@ class ClosetAssistantClosetCard extends HTMLElement {
     if (t.id === "importFile") return this._importFile(t);
     if (t.id === "imageFile") return this._uploadImage(t);
     if (this._draft && t.dataset.rerender !== undefined) {
-      this._draft[t.dataset.field] = t.value;
-      if (t.dataset.field === "pattern" && t.value !== "solid" && !this._draft.pattern_scale) this._draft.pattern_scale = "medium";
+      const f = t.dataset.field;
+      this._draft[f] = t.value;
+      if (f === "pattern" && t.value !== "solid" && !this._draft.pattern_scale) this._draft.pattern_scale = "medium";
+      if (f === "fabric") (this._draft._touched ||= new Set()).add("fabric");
+      if (!this._draft.id && (f === "category" || f === "fabric")) this._applySuggested(this._draft, { fabric: f === "category" });
       this._renderModal();
     }
   }
@@ -979,6 +1231,7 @@ class ClosetAssistantClosetCard extends HTMLElement {
         const item = d.items.find((i) => i.id === el.dataset.id);
         if (!item) return;
         this._draft = JSON.parse(JSON.stringify({ ...item, fabric: item.fabric || "", _colorTouched: true }));
+        this._draft._touched = new Set([...RATING_KEYS, "fabric"]);
         return this._renderModal();
       }
       case "close":
@@ -998,6 +1251,9 @@ class ClosetAssistantClosetCard extends HTMLElement {
       case "clear-image":
         this._draft.image = null;
         this._draft.image_url = null;
+        return this._renderModal();
+      case "suggest":
+        this._applySuggested(this._draft, { force: true });
         return this._renderModal();
       case "add-accent":
         this._draft.accent_colors = [...(this._draft.accent_colors || []), "#ffffff"];
@@ -1067,7 +1323,7 @@ class ClosetAssistantClosetCard extends HTMLElement {
     }
     const payload = {};
     for (const k of ["id", "name", "category", "color", "accent_colors", "pattern", "pattern_scale", "fabric",
-      "warmth", "waterproof", "form_fit", "uv", "structure", "max_wears", "last_worn", "notes", "image"]) {
+      "warmth", "waterproof", "form_fit", "uv", "structure", "dressiness", "home_only", "max_wears", "last_worn", "notes", "image"]) {
       if (dr[k] !== undefined) payload[k] = dr[k];
     }
     if (!payload.id) delete payload.id;
@@ -1270,6 +1526,22 @@ const CLOSET_CSS = `
   .dialog label input:focus, .dialog label select:focus { outline:none; border-color:var(--ca-accent); }
   .dlg-actions { border-top:1px solid var(--ca-line); padding-top:14px; }
   .dlg-actions button:not(.primary):not(.danger) { border-color:var(--ca-line); }
+
+  /* ---- ratings helpers + home-only switch ---- */
+  .ratings-head { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px; margin-top:4px; }
+  .rating.dress { padding:10px 12px; border-radius:12px; background:var(--ca-surface); }
+  .flag.home { background:color-mix(in srgb, var(--ca-accent) 75%, #000); }
+  .dialog label.switch-row { flex-direction:row; align-items:flex-start; gap:12px; cursor:pointer; padding:12px; border-radius:12px;
+    border:1px solid var(--ca-line); color:var(--primary-text-color); }
+  .switch-row input { position:absolute; opacity:0; pointer-events:none; }
+  .switch { flex:none; width:38px; height:22px; border-radius:999px; background:var(--ca-line); position:relative; transition:background .2s; margin-top:1px; }
+  .switch::after { content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .2s; }
+  .switch-row input:checked + .switch { background:var(--ca-accent); }
+  .switch-row input:checked + .switch::after { transform:translateX(16px); }
+  .switch-row input:focus-visible + .switch { outline:2px solid var(--ca-accent); outline-offset:2px; }
+  .switch-text { display:flex; flex-direction:column; gap:2px; font-size:13px; }
+  .switch-text b { font-weight:500; font-size:14px; }
 `;
 
 /*

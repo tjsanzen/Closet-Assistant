@@ -13,14 +13,16 @@
           "suggestion_time": "Nuevo conjunto cada mañana a las",
           "temperature_sensitivity": "Sensibilidad a la temperatura",
           "layering_threshold": "Poner capas cuando la máxima menos la mínima sea al menos (grados)",
-          "declutter_days": "Sugerir deshacerse tras (días sin usar)"
+          "declutter_days": "Sugerir deshacerse tras (días sin usar)",
+          "everyday_dressiness": "Nivel de vestir diario"
         },
         "data_description": {
           "wears_per_wash": "Uso base entre lavados. Los jerséis, pantalones y chaquetas reciben un múltiplo de esto; la ropa interior y los calcetines son siempre 1. Puedes anular cualquier artículo.",
           "laundry_time": "A esta hora en los días de lavado, todos los artículos vuelven a marcarse como limpios.",
           "temperature_sensitivity": "Positivo si eres friolero/a (te viste más abrigado), negativo si eres caluroso/a.",
           "layering_threshold": "Las grandes oscilaciones diarias requieren un conjunto en capas del que puedas prescindir por la tarde.",
-          "declutter_days": "Las prendas que no se usen en este número de días aparecen en «Sin usar últimamente». Los abrigos, pantalones cortos y otras prendas de temporada siempre tienen al menos un año. 0 lo desactiva."
+          "declutter_days": "Las prendas que no se usen en este número de días aparecen en «Sin usar últimamente». Los abrigos, pantalones cortos y otras prendas de temporada siempre tienen al menos un año. 0 lo desactiva.",
+          "everyday_dressiness": "Qué tan arreglado debe ser tu atuendo diario: 1 = ropa de estar en casa, 5 = casual, 7 = smart casual / oficina, 10 = entrevista o iglesia. Más adelante, los eventos del calendario podrán ajustarlo cada día."
         }
       }
     },
@@ -44,10 +46,12 @@
           "suggestion_time": "Nuevo conjunto cada mañana a las",
           "temperature_sensitivity": "Sensibilidad a la temperatura",
           "layering_threshold": "Poner capas cuando la máxima menos la mínima sea al menos (grados)",
-          "declutter_days": "Sugerir deshacerse tras (días sin usar)"
+          "declutter_days": "Sugerir deshacerse tras (días sin usar)",
+          "everyday_dressiness": "Nivel de vestir diario"
         },
         "data_description": {
-          "declutter_days": "Las prendas que no se usen en este número de días aparecen en «Sin usar últimamente». Los abrigos, pantalones cortos y otras prendas de temporada siempre tienen al menos un año. 0 lo desactiva."
+          "declutter_days": "Las prendas que no se usen en este número de días aparecen en «Sin usar últimamente». Los abrigos, pantalones cortos y otras prendas de temporada siempre tienen al menos un año. 0 lo desactiva.",
+          "everyday_dressiness": "Qué tan arreglado debe ser tu atuendo diario: 1 = ropa de estar en casa, 5 = casual, 7 = smart casual / oficina, 10 = entrevista o iglesia. Más adelante, los eventos del calendario podrán ajustarlo cada día."
         }
       }
     },

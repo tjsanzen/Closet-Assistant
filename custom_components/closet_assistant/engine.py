@@ -262,11 +262,17 @@ class OutfitEngine:
         self.unit = unit
         self.plan = plan_day(weather, settings)
         self._colours: dict[str, Colour] = {}
+        self.jitter = True  # random nudge while generating; off when judging a manual swap
 
         self.pools: dict[str, list[dict]] = {}
+        # Target dressiness for the day (1 lounge ... 10 interview). Fixed for now; a
+        # calendar integration can later pass a per-day value in settings.
+        self.dressiness = float(settings.get("target_dressiness", settings.get("everyday_dressiness", 5)))
         for item in items:
             if not is_clean(item, self.base_wears):
                 continue
+            if item.get("home_only"):
+                continue  # pajamas / loungewear are never suggested for going out
             slot = CATEGORIES[item["category"]]["slot"]
             self.pools.setdefault(slot, []).append(item)
 
@@ -457,7 +463,8 @@ class OutfitEngine:
         if cand.key in self.recent_sets:
             pen += 8
 
-        pen -= self.rng.uniform(0, 3)  # a little chaos keeps the closet in rotation
+        if self.jitter:
+            pen -= self.rng.uniform(0, 3)  # a little chaos keeps the closet in rotation
         cand.score = 100 - pen
         if explain:
             cand.notes = notes
@@ -570,11 +577,139 @@ class OutfitEngine:
                     + (", tied together by a shared colour." if shared else ", bridged by a neutral.")
                 )
 
-        # 4. Classic detail: belt roughly matches shoes
+        # 4. Dressiness: suit the occasion, and don't mix sweatpants with a blazer
+        core = [state[s] for s in ("top", "mid", "outer", "bottom", "shoes") if s in state]
+        levels = [i.get("dressiness", 5) for i in core]
+        for lvl in levels:
+            pen += max(0.0, (self.dressiness - 2) - lvl) * 1.2  # too casual for the day
+            pen += max(0.0, lvl - (self.dressiness + 3)) * 0.8  # saving the good stuff
+        spread = max(levels) - min(levels)
+        pen += max(0, spread - 4) * 1.5
+        if notes is not None:
+            avg = sum(levels) / len(levels)
+            word = "loungy" if avg < 3 else "casual" if avg < 5.5 else "smart casual" if avg < 7.5 else "dressy"
+            notes.append(f"Dressiness about {avg:.0f}/10 ({word}), aiming for {self.dressiness:.0f}.")
+
+        # 5. Classic detail: belt roughly matches shoes
         if "belt" in state and "shoes" in state:
             d = delta_e(self._colour(state["belt"]["color"]).lab, self._colour(state["shoes"]["color"]).lab)
             pen += -1.5 if d < 20 else 1.5 if d > 50 else 0
         return pen
+
+    # ------------------------------------------------------------------ manual swaps
+    def evaluate(self, pieces: dict[str, dict]) -> dict[str, Any]:
+        """Score a hand-picked outfit (no randomness) and explain it like a suggestion."""
+        self.jitter = False
+        cand = Candidate(dict(pieces))
+        self._score(cand, explain=True)
+        result = self._result(cand)
+        result["issues"] = self.issues(pieces)
+        return result
+
+    def issues(self, pieces: dict[str, dict]) -> list[str]:
+        """Plain-language reasons an outfit breaks the rules. Empty list = looks fine."""
+        p = self.plan
+        out: list[str] = []
+        if "top" not in pieces or "bottom" not in pieces:
+            return ["An outfit needs a top and a bottom."]
+
+        # cleanliness / intent / rotation
+        for slot, item in pieces.items():
+            if not is_clean(item, self.base_wears):
+                out.append(f"{item['name']} is in the hamper (no wears left before washing).")
+            if item.get("home_only"):
+                out.append(f"{item['name']} is marked as around-the-house only.")
+            if slot in STYLE_SLOTS and item.get("last_worn"):
+                try:
+                    days = (self.today - date.fromisoformat(item["last_worn"])).days
+                except ValueError:
+                    days = 99
+                if days == 1:
+                    out.append(f"You wore {item['name']} yesterday.")
+
+        # warmth
+        full = self._torso_warmth(pieces)
+        need = p.need_low if p.layered else p.need_design
+        when = f"the low of {self._t(p.low_f)}" if p.layered else f"a {self._t(p.low_f)} to {self._t(p.high_f)} day"
+        if full < need - 2:
+            out.append(f"Probably too cold: torso warmth {full:g}, about {need:.0f} is needed for {when}.")
+        elif not p.layered and full > need + 4:
+            out.append(f"Probably too warm: torso warmth {full:g}, about {need:.0f} is plenty for {when}.")
+        elif p.layered:
+            sheddable = {k: v for k, v in pieces.items() if k not in ("outer", "mid", "accessory")}
+            if self._torso_warmth(sheddable) > p.need_high + 4:
+                out.append(f"Hard to cool down: even after taking layers off, it's warm for the {self._t(p.high_f)} afternoon.")
+        legs = pieces["bottom"]["warmth"]
+        if legs < p.need_legs - 3:
+            out.append(f"{pieces['bottom']['name']} may leave your legs cold today.")
+        elif legs > p.need_legs + 4:
+            out.append(f"{pieces['bottom']['name']} may be too warm today.")
+
+        # rain & UV
+        outermost = next(pieces[s] for s in ("outer", "mid", "top") if s in pieces)
+        if p.rain and outermost["waterproof"] < 5:
+            out.append(f"Rain is likely and {outermost['name']} is only {outermost['waterproof']}/10 waterproof.")
+        if p.rain and "shoes" in pieces and pieces["shoes"]["waterproof"] < 3:
+            out.append(f"Rain is likely and {pieces['shoes']['name']} aren't water resistant.")
+        if p.uv >= 6:
+            sun = next(pieces[s] for s in ("top", "mid", "outer") if s in pieces)
+            if sun["uv"] < 4:
+                out.append(f"UV index is {p.uv:g} and {sun['name']} only blocks {sun['uv']}/10.")
+
+        # proportion
+        tf, bf = outermost["form_fit"], pieces["bottom"]["form_fit"]
+        if tf >= 7 and bf >= 7:
+            out.append(f"{outermost['name']} and {pieces['bottom']['name']} are both tight: pair a fitted piece with a looser one.")
+        elif tf <= 3 and bf <= 3:
+            out.append(f"{outermost['name']} and {pieces['bottom']['name']} are both loose: the outfit may look shapeless.")
+
+        # colour
+        areas = dict(torso_areas(pieces))
+        for slot, a in VISIBLE_AREA.items():
+            if slot in pieces:
+                areas[slot] = a
+        visible = [pieces[s] for s in areas if s in pieces]
+        chromatic = []
+        for item in visible:
+            col = self._colour(item["color"])
+            if not col.neutral and not any(delta_e(col.lab, c.lab) < 20 for _, c in chromatic):
+                chromatic.append((item, col))
+        for (ia, a), (ib, b) in combinations(chromatic, 2):
+            d = hue_diff(a.hue, b.hue)
+            if not (d <= 35 or 100 <= d <= 140 or d >= 150):
+                out.append(f"Colours may clash: {colour_name(a.hex)} ({ia['name']}) and {colour_name(b.hex)} ({ib['name']}).")
+                break
+        if len(chromatic) > 3:
+            out.append("A lot of bright colours at once: try swapping one for a neutral.")
+        if len(visible) >= 3:
+            labs = [self._colour(i["color"]).lab for i in visible]
+            if all(delta_e(labs[0], l) < 20 for l in labs):
+                fabrics = {i.get("fabric") for i in visible if i.get("fabric")}
+                structs = [i["structure"] for i in visible]
+                if len(fabrics) < 2 and max(structs) - min(structs) < 3:
+                    out.append("Everything is the same colour and texture, so it may look flat.")
+
+        # patterns
+        pats = [i for i in visible if i["pattern"] != "solid" and CATEGORIES[i["category"]]["slot"] in ("top", "mid", "outer", "bottom")]
+        if len(pats) >= 3:
+            out.append(f"{len(pats)} patterns at once is a lot: keep one or two.")
+        for a, b in combinations(pats, 2):
+            if (a["pattern_scale"] or "medium") == (b["pattern_scale"] or "medium"):
+                out.append(f"{a['name']} and {b['name']} are both {a['pattern_scale'] or 'medium'}-scale patterns: vary the scale.")
+            elif PATTERNS[a["pattern"]]["family"] == PATTERNS[b["pattern"]]["family"]:
+                out.append(f"{a['name']} and {b['name']} are both {PATTERNS[a['pattern']]['family']} patterns: mix a geometric with an organic one.")
+
+        # dressiness
+        core = [pieces[s] for s in ("top", "mid", "outer", "bottom", "shoes") if s in pieces]
+        lo = min(core, key=lambda i: i.get("dressiness", 5))
+        hi = max(core, key=lambda i: i.get("dressiness", 5))
+        if hi.get("dressiness", 5) - lo.get("dressiness", 5) > 5:
+            out.append(f"{lo['name']} is much more casual than {hi['name']}.")
+        for item in core:
+            if item.get("dressiness", 5) < self.dressiness - 3:
+                out.append(f"{item['name']} is more casual than you usually dress.")
+                break
+        return list(dict.fromkeys(out))  # de-duplicate, keep order
 
     # ------------------------------------------------------------------ output
     def _t(self, temp_f: float) -> str:

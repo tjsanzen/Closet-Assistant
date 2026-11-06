@@ -69,8 +69,81 @@ FABRICS = [
     "leather", "suede", "corduroy", "tweed", "nylon", "synthetic", "other",
 ]
 
-RATING_FIELDS = ("warmth", "waterproof", "form_fit", "uv", "structure")
-RATING_DEFAULTS = {"warmth": 3, "waterproof": 1, "form_fit": 5, "uv": 3, "structure": 5}
+RATING_FIELDS = ("warmth", "waterproof", "form_fit", "uv", "structure", "dressiness")
+RATING_DEFAULTS = {"warmth": 3, "waterproof": 1, "form_fit": 5, "uv": 3, "structure": 5, "dressiness": 5}
+
+# Starting values per category so adding clothes takes fewer clicks. Users can change
+# any of them; these just get the sliders close. Order: warmth, waterproof, form_fit,
+# uv, structure, dressiness (1 = loungewear, 10 = interview / church).
+CATEGORY_DEFAULTS: dict[str, dict[str, Any]] = {
+    "underwear":          {"r": (1, 1, 8, 1, 1, 3), "fabric": "cotton"},
+    "socks":              {"r": (1, 1, 7, 1, 1, 4), "fabric": "cotton"},
+    "short_sleeve_shirt": {"r": (2, 1, 5, 4, 3, 4), "fabric": "cotton"},
+    "long_sleeve_shirt":  {"r": (3, 1, 5, 6, 5, 5), "fabric": "cotton"},
+    "sweater":            {"r": (5, 1, 4, 7, 3, 5), "fabric": "knit"},
+    "jacket":             {"r": (4, 4, 5, 8, 7, 6), "fabric": None},
+    "coat":               {"r": (8, 4, 5, 9, 8, 7), "fabric": "wool"},
+    "shorts":             {"r": (1, 1, 5, 4, 5, 3), "fabric": "cotton"},
+    "pants":              {"r": (4, 2, 6, 8, 6, 5), "fabric": "cotton"},
+    "skirt":              {"r": (2, 1, 5, 5, 4, 6), "fabric": "cotton"},
+    "belt":               {"r": (1, 1, 5, 1, 8, 6), "fabric": "leather"},
+    "shoes":              {"r": (3, 3, 5, 1, 7, 5), "fabric": "leather"},
+    "hat":                {"r": (2, 2, 5, 7, 5, 3), "fabric": "cotton"},
+    "accessory":          {"r": (4, 1, 5, 3, 2, 5), "fabric": "wool"},
+}
+
+# How fabric nudges the starting values. `uv` and `structure` are the fabric's own
+# typical rating (blended with the category's); the rest are +/- adjustments.
+FABRIC_TRAITS: dict[str, dict[str, int]] = {
+    "denim":     {"uv": 9, "structure": 8, "warmth": 1, "dressiness": -1},
+    "cotton":    {"uv": 5},
+    "linen":     {"uv": 3, "structure": 4, "warmth": -1},
+    "wool":      {"uv": 8, "warmth": 1, "dressiness": 1},
+    "knit":      {"uv": 6, "structure": 3},
+    "fleece":    {"uv": 7, "structure": 2, "warmth": 2, "dressiness": -2},
+    "silk":      {"uv": 4, "structure": 2, "dressiness": 2},
+    "satin":     {"uv": 4, "structure": 2, "dressiness": 2},
+    "leather":   {"uv": 10, "structure": 9, "waterproof": 3, "warmth": 1, "dressiness": 1},
+    "suede":     {"uv": 9, "structure": 7, "warmth": 1, "dressiness": 1},
+    "corduroy":  {"uv": 8, "structure": 7, "warmth": 1},
+    "tweed":     {"uv": 8, "structure": 8, "warmth": 1, "dressiness": 2},
+    "nylon":     {"uv": 6, "waterproof": 4, "dressiness": -1},
+    "synthetic": {"uv": 6, "waterproof": 1},
+    "other":     {},
+}
+
+# Ratings the outfit engine actually uses for each category. The editor hides the
+# rest (UV on socks or underwear, for example, doesn't affect anything).
+RELEVANT_RATINGS: dict[str, tuple[str, ...]] = {
+    "underwear": (),
+    "socks": (),
+    "belt": ("dressiness",),
+    "shoes": ("waterproof", "dressiness"),
+    "hat": ("uv", "dressiness"),
+    "accessory": ("warmth", "dressiness"),
+}
+
+
+def suggested_ratings(category: str, fabric: str | None) -> dict[str, int]:
+    """Starting slider values for a category + fabric combination."""
+    base = dict(zip(RATING_FIELDS, CATEGORY_DEFAULTS.get(category, {"r": (3, 1, 5, 3, 5, 5)})["r"]))
+    traits = FABRIC_TRAITS.get(fabric or "", {})
+    out = dict(base)
+    if category not in ("underwear", "socks", "belt", "shoes") and "uv" in traits:
+        out["uv"] = int((base["uv"] + traits["uv"]) / 2 + 0.5)
+    if "structure" in traits:
+        out["structure"] = int((base["structure"] + traits["structure"]) / 2 + 0.5)
+    for field in ("warmth", "waterproof", "dressiness"):
+        out[field] = base[field] + traits.get(field, 0)
+    return {k: max(1, min(10, int(v))) for k, v in out.items()}
+
+
+def suggestion_table() -> dict[str, Any]:
+    """Every category x fabric suggestion, for the card's editor."""
+    table: dict[str, Any] = {}
+    for cat, meta in CATEGORY_DEFAULTS.items():
+        table[cat] = {"fabric": meta["fabric"], "by_fabric": {f: suggested_ratings(cat, f) for f in ["", *FABRICS]}}
+    return table
 # Accept the spellings people are likely to type in a hand-written JSON file
 FIELD_ALIASES = {
     "warmpth": "warmth", "warmth_rating": "warmth",
@@ -79,6 +152,8 @@ FIELD_ALIASES = {
     "uv_rating": "uv", "upf": "uv",
     "colour": "color", "secondary_colors": "accent_colors", "colors": "accent_colors",
     "last_worn_date": "last_worn", "photo": "image",
+    "quality": "dressiness", "formality": "dressiness",
+    "lounge": "home_only", "pajamas": "home_only", "at_home_only": "home_only",
 }
 
 HEX_RE = re.compile(r"^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$")
@@ -191,9 +266,12 @@ def normalize_item(raw: dict[str, Any], base_wears: int = 2) -> dict[str, Any]:
         "times_worn": _clamp_int(data.get("times_worn", 0), 0, 100000, 0),
         "notes": str(data.get("notes") or "")[:500],
         "needs_review": bool(data.get("needs_review", False)),
+        "home_only": bool(data.get("home_only", False)),
     }
+    # missing ratings (hand-written JSON, scanned images) start from the smart defaults
+    suggested = suggested_ratings(category, fabric)
     for field in RATING_FIELDS:
-        item[field] = _clamp_int(data.get(field), 1, 10, RATING_DEFAULTS[field])
+        item[field] = _clamp_int(data.get(field), 1, 10, suggested[field])
 
     mx = effective_max_wears(item, base_wears)
     if "wears_since_wash" in data:

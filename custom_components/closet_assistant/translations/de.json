@@ -13,14 +13,16 @@
           "suggestion_time": "Neues Outfit jeden Morgen um",
           "temperature_sensitivity": "Temperaturempfindlichkeit",
           "layering_threshold": "Lagenlook, wenn Hoch minus Tief mindestens beträgt (Grad)",
-          "declutter_days": "Ausmisten vorschlagen nach (Tagen ungetragen)"
+          "declutter_days": "Ausmisten vorschlagen nach (Tagen ungetragen)",
+          "everyday_dressiness": "Alltägliche Eleganz"
         },
         "data_description": {
           "wears_per_wash": "Anzahl der Tragevorgänge zwischen den Wäschen als Basis. Pullover, Hosen und Jacken erhalten ein Vielfaches davon; Unterwäsche und Socken sind immer 1. Du kannst jeden Artikel überschreiben.",
           "laundry_time": "Zu dieser Zeit an Waschtagen wird jeder Artikel wieder als sauber markiert.",
           "temperature_sensitivity": "Positiv, wenn du leicht frierst (kleidet dich wärmer), negativ, wenn dir schnell warm ist.",
           "layering_threshold": "Große tägliche Temperaturschwankungen führen zu einem Lagenlook, den du am Nachmittag ablegen kannst.",
-          "declutter_days": "Teile, die so viele Tage nicht getragen wurden, erscheinen unter „Lange nicht getragen“. Mäntel, Shorts und andere saisonale Teile bekommen immer mindestens ein Jahr. 0 schaltet die Funktion aus."
+          "declutter_days": "Teile, die so viele Tage nicht getragen wurden, erscheinen unter „Lange nicht getragen“. Mäntel, Shorts und andere saisonale Teile bekommen immer mindestens ein Jahr. 0 schaltet die Funktion aus.",
+          "everyday_dressiness": "Wie schick dein Alltagsoutfit sein soll: 1 = Loungewear, 5 = lässig, 7 = Smart Casual / Büro, 10 = Vorstellungsgespräch oder Kirche. Später können Kalendertermine das pro Tag festlegen."
         }
       }
     },
@@ -44,10 +46,12 @@
           "suggestion_time": "Neues Outfit jeden Morgen um",
           "temperature_sensitivity": "Temperaturempfindlichkeit",
           "layering_threshold": "Lagenlook, wenn Hoch minus Tief mindestens beträgt (Grad)",
-          "declutter_days": "Ausmisten vorschlagen nach (Tagen ungetragen)"
+          "declutter_days": "Ausmisten vorschlagen nach (Tagen ungetragen)",
+          "everyday_dressiness": "Alltägliche Eleganz"
         },
         "data_description": {
-          "declutter_days": "Teile, die so viele Tage nicht getragen wurden, erscheinen unter „Lange nicht getragen“. Mäntel, Shorts und andere saisonale Teile bekommen immer mindestens ein Jahr. 0 schaltet die Funktion aus."
+          "declutter_days": "Teile, die so viele Tage nicht getragen wurden, erscheinen unter „Lange nicht getragen“. Mäntel, Shorts und andere saisonale Teile bekommen immer mindestens ein Jahr. 0 schaltet die Funktion aus.",
+          "everyday_dressiness": "Wie schick dein Alltagsoutfit sein soll: 1 = Loungewear, 5 = lässig, 7 = Smart Casual / Büro, 10 = Vorstellungsgespräch oder Kirche. Später können Kalendertermine das pro Tag festlegen."
         }
       }
     },

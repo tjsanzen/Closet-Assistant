@@ -32,6 +32,8 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_export,
         ws_scan_images,
         ws_keep,
+        ws_swap_options,
+        ws_swap,
     ):
         websocket_api.async_register_command(hass, handler)
 
@@ -165,3 +167,28 @@ async def ws_scan_images(manager: ClosetManager, msg: dict[str, Any]) -> dict[st
 @_guard
 async def ws_keep(manager: ClosetManager, msg: dict[str, Any]) -> None:
     await manager.async_keep(msg["item_ids"], msg.get("days"))
+
+
+SLOTS = vol.In(["top", "mid", "outer", "bottom", "shoes", "belt", "hat", "accessory", "socks", "underwear"])
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/swap/options", vol.Required("slot"): SLOTS}
+)
+@websocket_api.async_response
+@_guard
+async def ws_swap_options(manager: ClosetManager, msg: dict[str, Any]) -> dict[str, Any]:
+    return await manager.async_swap_options(msg["slot"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/swap",
+        vol.Required("slot"): SLOTS,
+        vol.Optional("item_id"): vol.Any(str, None),
+    }
+)
+@websocket_api.async_response
+@_guard
+async def ws_swap(manager: ClosetManager, msg: dict[str, Any]) -> None:
+    await manager.async_swap(msg["slot"], msg.get("item_id"))

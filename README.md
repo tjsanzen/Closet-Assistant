@@ -39,6 +39,7 @@ The cards are bundled inside the integration and load on every dashboard automat
 | New outfit each morning at | When the day's suggestion is generated. The default is 05:00. |
 | Temperature sensitivity | −5 (run hot) to +5 (run cold). Each step shifts the targets by about 2 °F. |
 | Layering threshold | If high minus low is at least this many degrees, the outfit is built in layers. |
+| Everyday dressiness | 1–10. How dressed-up the daily outfit should be: 1 = loungewear, 5 = casual, 7 = smart casual or office, 10 = interview or church. Calendar events will be able to set this per day later. |
 | Suggest letting go after | Days unworn before an item is flagged in the closet's **Unworn** list. The default is 180. Seasonal pieces always get at least a year. 0 turns it off. |
 
 You can change all of these later under **Configure**.
@@ -82,6 +83,8 @@ See `examples/closet.json` for a full starter closet. The item fields:
 | `waterproof` | 1-10 | |
 | `form_fit` | 1-10 | 1 = loose/oversized, 10 = tight/fitted. `form_fitting` is accepted too. |
 | `uv` | 1-10 | |
+| `dressiness` | 1-10 | Quality or dressiness: 1 = lounge or worn-in, 10 = interview or church. `quality` and `formality` are accepted too. |
+| `home_only` | true/false | "Around the house only": pajamas and loungewear. These stay in your closet but are never suggested for going out, and aren't flagged as unworn. |
 | `structure` | 1-10 (optional, default 5) | 1 = fluid/drapey (silk, fine knit), 10 = rigid/tailored (heavy denim, wool, leather). Drives the structured-vs-fluid rule. |
 | `color` | hex, e.g. `#1f2a44` | The main colour. |
 | `accent_colors` | list of hex | The other colours in a pattern, or trim. Used for the "anchor with a common colour" rule. |
@@ -126,10 +129,31 @@ See `examples/closet.json` for a full starter closet. The item fields:
 
 Value contrast (high vs low) is reported in the "Why this?" notes but not penalised, since both looks are valid.
 
+## Swapping a piece
+On the Wear Today card, **long-press** an item on a phone or tablet, or **right-click** it with a mouse, to swap it. A sheet lists every other item in the same category. Optional pieces (jacket, sweater, shoes, belt, hat, accessory) also get **Go without**. Each option is checked against today's weather and the rest of the outfit, and shows **Good match** or how many concerns it has. The best matches are listed first.
+
+Pick a match and it's swapped in straight away. Pick something with concerns and you're asked **"Are you sure you want to wear this?"** with the reasons, for example:
+- *Probably too cold: torso warmth 6, about 12 is needed for the low of 45°.*
+- *Rain is likely and Linen shirt is only 1/10 waterproof.*
+- *Colours may clash: orange (Rust tee) and pink (Pink shorts).*
+- *Striped tee and Gingham shirt are both small-scale patterns: vary the scale.*
+- *Sweatpants is much more casual than Blazer.*
+
+Other checks cover high UV with little protection, two tight or two loose pieces, too many bright colours, a flat one-colour look, items in the hamper, around-the-house-only items, and things you wore yesterday. After a swap, the layering advice and "Why?" notes are recalculated. Swapping is turned off once the outfit is logged as worn.
+
 ## Wearing and washing
 - **Wear this** marks every piece as worn today and uses up one wear. An item at 0 wears left goes to the *hamper* and isn't suggested again until it's washed.
 - **Wash closet** (on the card, the button entity or `closet_assistant.wash_closet`) resets everything. Laundry day does this automatically.
 - In the item editor: **Mark clean** washes one item, and **Wore it today** logs a single piece.
+
+## Smart defaults when adding clothes
+When you add an item, the sliders start from typical values for its category, adjusted for the fabric. For example, a sweater starts warmer than a tee, denim and leather start with high UV protection and structure, linen starts cooler and lighter, and fleece starts warm but casual. Change either one and any slider you haven't moved updates to match. On existing items, **Use typical** resets the sliders.
+
+Sliders that don't affect outfit picks for a category are hidden. Underwear and socks have none. Belts only have dressiness, shoes have waterproof and dressiness, and hats have UV and dressiness. Items imported from JSON without ratings get the same typical values.
+
+## Dressiness and "around the house only"
+- **Quality / dressiness** (1–10) lets the daily outfit match the day. It aims for your *Everyday dressiness* setting, avoids pieces far too casual for it, saves your best pieces from being worn every day, and won't mix sweatpants with a blazer. A calendar integration will later be able to raise the target on days with an interview or church.
+- **Around the house only** keeps pajamas and loungewear in your closet without ever suggesting them for the day's outfit. They show a *home* tag and an **At home** filter in the closet card.
 
 ## Decluttering: "Haven't worn lately"
 Every item records when it was added and when it was last worn. When something hasn't been worn for your threshold (6 months by default), the Manage Closet card shows a banner and an **Unworn** filter chip. Never-worn items count from the day they were added. Items that existed before this feature count from the day you updated.

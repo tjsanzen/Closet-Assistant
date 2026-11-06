@@ -13,14 +13,16 @@
           "suggestion_time": "New outfit each morning at",
           "temperature_sensitivity": "Temperature sensitivity",
           "layering_threshold": "Layer when high minus low is at least (degrees)",
-          "declutter_days": "Suggest letting go after (days unworn)"
+          "declutter_days": "Suggest letting go after (days unworn)",
+          "everyday_dressiness": "Everyday dressiness"
         },
         "data_description": {
           "wears_per_wash": "Base wears between washes. Sweaters, pants and jackets get a multiple of this; underwear and socks are always 1. You can override any item.",
           "laundry_time": "At this time on laundry days every item is marked clean again.",
           "temperature_sensitivity": "Positive if you run cold (dresses you warmer), negative if you run hot.",
           "layering_threshold": "Big daily swings get a layered outfit you can shed by the afternoon.",
-          "declutter_days": "Items not worn in this many days show up under \"Haven't worn lately\". Coats, shorts and other seasonal pieces always get at least a year. 0 turns it off."
+          "declutter_days": "Items not worn in this many days show up under \"Haven't worn lately\". Coats, shorts and other seasonal pieces always get at least a year. 0 turns it off.",
+          "everyday_dressiness": "How dressed-up your daily outfit should be: 1 = loungewear, 5 = casual, 7 = smart casual / office, 10 = interview or church. Later, calendar events can set this per day."
         }
       }
     },
@@ -44,10 +46,12 @@
           "suggestion_time": "New outfit each morning at",
           "temperature_sensitivity": "Temperature sensitivity",
           "layering_threshold": "Layer when high minus low is at least (degrees)",
-          "declutter_days": "Suggest letting go after (days unworn)"
+          "declutter_days": "Suggest letting go after (days unworn)",
+          "everyday_dressiness": "Everyday dressiness"
         },
         "data_description": {
-          "declutter_days": "Items not worn in this many days show up under \"Haven't worn lately\". Coats, shorts and other seasonal pieces always get at least a year. 0 turns it off."
+          "declutter_days": "Items not worn in this many days show up under \"Haven't worn lately\". Coats, shorts and other seasonal pieces always get at least a year. 0 turns it off.",
+          "everyday_dressiness": "How dressed-up your daily outfit should be: 1 = loungewear, 5 = casual, 7 = smart casual / office, 10 = interview or church. Later, calendar events can set this per day."
         }
       }
     },

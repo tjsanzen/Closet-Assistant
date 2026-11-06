@@ -99,6 +99,7 @@ class ClosetSensor(_Base):
         return {
             "total_items": counts["total"],
             "in_hamper": counts["dirty"],
+            "around_the_house_only": counts["home_only"],
             "last_wash": self.manager.last_wash,
             "next_laundry": self.manager.next_laundry_day(),
         }

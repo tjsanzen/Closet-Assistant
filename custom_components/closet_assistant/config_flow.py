@@ -12,6 +12,7 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_DECLUTTER_DAYS,
+    CONF_EVERYDAY_DRESSINESS,
     CONF_LAUNDRY_DAYS,
     CONF_LAUNDRY_TIME,
     CONF_LAUNDRY_WEEKS,
@@ -65,6 +66,9 @@ def _schema(current: dict[str, Any]) -> vol.Schema:
             vol.Required(CONF_LAYER_THRESHOLD, default=d(CONF_LAYER_THRESHOLD)): selector.NumberSelector(
                 selector.NumberSelectorConfig(min=4, max=40, step=1, mode=selector.NumberSelectorMode.BOX)
             ),
+            vol.Required(CONF_EVERYDAY_DRESSINESS, default=d(CONF_EVERYDAY_DRESSINESS)): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=1, max=10, step=1, mode=selector.NumberSelectorMode.SLIDER)
+            ),
             vol.Required(CONF_DECLUTTER_DAYS, default=d(CONF_DECLUTTER_DAYS)): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=0, max=730, step=1, unit_of_measurement="days", mode=selector.NumberSelectorMode.BOX
@@ -87,6 +91,7 @@ def _clean(user_input: dict[str, Any]) -> dict[str, Any]:
     data[CONF_TEMP_SENSITIVITY] = int(data[CONF_TEMP_SENSITIVITY])
     data[CONF_LAYER_THRESHOLD] = int(data[CONF_LAYER_THRESHOLD])
     data[CONF_DECLUTTER_DAYS] = int(data.get(CONF_DECLUTTER_DAYS, 180))
+    data[CONF_EVERYDAY_DRESSINESS] = int(data.get(CONF_EVERYDAY_DRESSINESS, 5))
     return data
 
 

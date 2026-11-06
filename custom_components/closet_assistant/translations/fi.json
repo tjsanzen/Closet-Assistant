@@ -13,14 +13,16 @@
           "suggestion_time": "Uusi asu joka aamu klo",
           "temperature_sensitivity": "Lämpötilaherkkyys",
           "layering_threshold": "Kerrosta, kun korkean ja matalan lämpötilan erotus on vähintään (astetta)",
-          "declutter_days": "Ehdota luopumista (päivää käyttämättä)"
+          "declutter_days": "Ehdota luopumista (päivää käyttämättä)",
+          "everyday_dressiness": "Arjen pukeutumistaso"
         },
         "data_description": {
           "wears_per_wash": "Käyttökerrat pesujen välillä perusarvona. Villapaidat, housut ja takit saavat tästä monikerran; alusvaatteet ja sukat ovat aina 1. Voit ohittaa minkä tahansa tuotteen.",
           "laundry_time": "Tähän aikaan pyykkipäivinä kaikki tuotteet merkitään jälleen puhtaiksi.",
           "temperature_sensitivity": "Positiivinen, jos palelet herkästi (pukeo lämpimämmin), negatiivinen, jos sinulla on usein kuuma.",
           "layering_threshold": "Suuret päivittäiset lämpötilanvaihtelyt aiheuttavat kerrospukeutumisen, jonka voit vähentää iltapäivällä.",
-          "declutter_days": "Vaatteet, joita ei ole käytetty näin moneen päivään, näkyvät kohdassa ”Ei käytetty aikoihin”. Takit, shortsit ja muut kausivaatteet saavat aina vähintään vuoden. 0 poistaa toiminnon käytöstä."
+          "declutter_days": "Vaatteet, joita ei ole käytetty näin moneen päivään, näkyvät kohdassa ”Ei käytetty aikoihin”. Takit, shortsit ja muut kausivaatteet saavat aina vähintään vuoden. 0 poistaa toiminnon käytöstä.",
+          "everyday_dressiness": "Kuinka juhlava päivän asun tulisi olla: 1 = kotivaatteet, 5 = rento, 7 = smart casual / toimisto, 10 = työhaastattelu tai kirkko. Myöhemmin kalenterin tapahtumat voivat asettaa tämän päiväkohtaisesti."
         }
       }
     },
@@ -44,10 +46,12 @@
           "suggestion_time": "Uusi asu joka aamu klo",
           "temperature_sensitivity": "Lämpötilaherkkyys",
           "layering_threshold": "Kerrosta, kun korkean ja matalan lämpötilan erotus on vähintään (astetta)",
-          "declutter_days": "Ehdota luopumista (päivää käyttämättä)"
+          "declutter_days": "Ehdota luopumista (päivää käyttämättä)",
+          "everyday_dressiness": "Arjen pukeutumistaso"
         },
         "data_description": {
-          "declutter_days": "Vaatteet, joita ei ole käytetty näin moneen päivään, näkyvät kohdassa ”Ei käytetty aikoihin”. Takit, shortsit ja muut kausivaatteet saavat aina vähintään vuoden. 0 poistaa toiminnon käytöstä."
+          "declutter_days": "Vaatteet, joita ei ole käytetty näin moneen päivään, näkyvät kohdassa ”Ei käytetty aikoihin”. Takit, shortsit ja muut kausivaatteet saavat aina vähintään vuoden. 0 poistaa toiminnon käytöstä.",
+          "everyday_dressiness": "Kuinka juhlava päivän asun tulisi olla: 1 = kotivaatteet, 5 = rento, 7 = smart casual / toimisto, 10 = työhaastattelu tai kirkko. Myöhemmin kalenterin tapahtumat voivat asettaa tämän päiväkohtaisesti."
         }
       }
     },

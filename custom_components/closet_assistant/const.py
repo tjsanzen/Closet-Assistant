@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "closet_assistant"
 NAME = "Closet Assistant"
-VERSION = "0.5.0"
+VERSION = "0.7.0"
 
 STORAGE_KEY = f"{DOMAIN}.closet"
 STORAGE_VERSION = 1
@@ -29,6 +29,7 @@ CONF_SUGGESTION_TIME = "suggestion_time"
 CONF_TEMP_SENSITIVITY = "temperature_sensitivity"
 CONF_LAYER_THRESHOLD = "layering_threshold"
 CONF_DECLUTTER_DAYS = "declutter_days"
+CONF_EVERYDAY_DRESSINESS = "everyday_dressiness"
 
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
@@ -41,6 +42,7 @@ DEFAULTS = {
     CONF_TEMP_SENSITIVITY: 0,
     CONF_LAYER_THRESHOLD: 15,
     CONF_DECLUTTER_DAYS: 180,
+    CONF_EVERYDAY_DRESSINESS: 5,
 }
 
 HISTORY_DAYS = 60
